@@ -1,0 +1,2177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart GIF Studio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --ink:#151a23;
+    --ink-soft:#5b6472;
+    --line:#e4e7ec;
+    --surface:#ffffff;
+    --canvas:#f6f7f9;
+    --accent:#ff3d81;
+    --accent-dark:#e11f66;
+    --accent-soft:#ffe9f2;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:'Inter', sans-serif;
+    background:var(--canvas);
+    color:var(--ink);
+    min-height:100vh;
+  }
+
+  .topbar{
+    background:var(--surface);
+    border-bottom:1px solid var(--line);
+    padding:16px 24px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .brand{
+    display:flex; align-items:center; gap:8px;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600; font-size:13px;
+    color: var(--accent-dark);
+    letter-spacing:0.3px;
+  }
+  .brand .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); }
+  .app-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size:17px; color:var(--ink);
+  }
+
+  /* ---------- Upload view ---------- */
+  #uploadView{
+    max-width:720px;
+    margin:0 auto;
+    padding:52px 24px 80px;
+  }
+  .hero{ text-align:center; margin-bottom:28px; }
+  .hero h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:800;
+    font-size:clamp(30px, 6vw, 44px);
+    margin:0 0 14px;
+    letter-spacing:-0.4px;
+  }
+  .hero .desc{
+    font-size:15.5px;
+    color:var(--ink-soft);
+    line-height:1.7;
+    max-width:560px;
+    margin:0 auto 10px;
+  }
+  .hero .privacy{
+    font-size:13px;
+    color:#8a92a0;
+    line-height:1.7;
+    max-width:560px;
+    margin:0 auto;
+  }
+
+  .panel{
+    background:var(--surface);
+    border-radius:18px;
+    border:1px solid var(--line);
+    padding:26px;
+    box-shadow:0 14px 34px rgba(16,22,35,0.06);
+    margin-top:30px;
+  }
+
+  .dropzone{
+    border:1.5px dashed #f3b8d0;
+    border-radius:14px;
+    padding:44px 20px;
+    text-align:center;
+    background:#fffafc;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    cursor:pointer;
+  }
+  .dropzone.drag{
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .dropzone svg{ width:40px; height:40px; margin-bottom:14px; }
+  .dz-title{ font-family:'Space Grotesk', sans-serif; font-size:16px; font-weight:600; margin-bottom:5px; }
+  .dz-sub{ font-size:13px; color:var(--ink-soft); margin-bottom:18px; }
+
+  .select-btn{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--ink); color:#fff; border:none;
+    padding:11px 22px; border-radius:999px;
+    font-size:13.5px; font-weight:600; font-family:'Inter', sans-serif;
+    cursor:pointer; transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .select-btn:hover{ background:#000; transform:translateY(-1px); }
+  input[type=file]{ display:none; }
+
+  .error-toast{
+    margin-top:14px;
+    background:#fdecea;
+    color:#9c2b23;
+    border:1px solid #f6c6c1;
+    padding:10px 14px;
+    border-radius:10px;
+    font-size:12.5px;
+    display:none;
+  }
+  .error-toast.show{ display:block; }
+
+  /* ---------- Studio view ---------- */
+  #studioView{
+    display:none;
+    max-width:1100px;
+    margin:0 auto;
+    padding:28px 24px 80px;
+  }
+  #studioView.show{ display:block; }
+
+  .studio-topline{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:18px;
+  }
+  .file-chip{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  .file-chip strong{ color:var(--ink); font-weight:600; }
+  .change-btn{
+    background:none;
+    border:1.5px solid var(--line);
+    color:var(--ink);
+    font-size:12.5px;
+    font-weight:600;
+    padding:8px 16px;
+    border-radius:999px;
+    cursor:pointer;
+    font-family:'Inter', sans-serif;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+  .change-btn:hover{ border-color:var(--accent); background:var(--accent-soft); }
+
+  .studio-grid{
+    display:grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap:22px;
+    align-items:start;
+  }
+
+  .left-column{
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+
+  .preview-panel{
+    background:var(--surface);
+    border-radius:18px;
+    border:1px solid var(--line);
+    padding:20px;
+    box-shadow:0 14px 34px rgba(16,22,35,0.06);
+  }
+
+  .preview-panel-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .collapse-btn{
+    width:26px; height:26px;
+    border-radius:7px;
+    border:1.5px solid var(--line);
+    background:#fbfbfc;
+    color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    flex-shrink:0;
+    transition: transform 0.2s ease, border-color 0.15s ease;
+  }
+  .collapse-btn svg{ width:13px; height:13px; transition: transform 0.2s ease; }
+  .collapse-btn:hover{ border-color:var(--accent); }
+  .preview-panel.collapsed .collapse-btn svg{ transform:rotate(-90deg); }
+
+  .preview-panel-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:14px;
+    font-weight:700;
+  }
+
+  .preview-panel.collapsed .preview-panel-body{ display:none; }
+
+  .preview-stage{
+    border-radius:12px;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:220px;
+    background-image:
+      linear-gradient(45deg, #eee 25%, transparent 25%),
+      linear-gradient(-45deg, #eee 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #eee 75%),
+      linear-gradient(-45deg, transparent 75%, #eee 75%);
+    background-size:20px 20px;
+    background-position:0 0, 0 10px, 10px -10px, -10px 0px;
+    background-color:#fbfbfc;
+  }
+  .preview-stage img{
+    max-width:100%;
+    max-height:52vh;
+    display:block;
+  }
+  .preview-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:14px;
+    margin-top:16px;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .preview-meta span strong{ color:var(--ink); font-weight:600; }
+
+  .resized-panel{ display:none; }
+  .resized-panel.show{ display:block; }
+
+  .download-resized-btn{
+    margin-top:16px;
+    width:100%;
+    background: var(--accent);
+    color:#fff;
+    border:none;
+    padding:12px;
+    border-radius:10px;
+    font-size:13.5px;
+    font-weight:700;
+    font-family:'Inter', sans-serif;
+    cursor:pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .download-resized-btn:hover{ background:var(--accent-dark); transform:translateY(-1px); }
+
+  .edit-panel{
+    background:var(--surface);
+    border-radius:18px;
+    border:1px solid var(--line);
+    padding:22px;
+    box-shadow:0 14px 34px rgba(16,22,35,0.06);
+  }
+  .edit-panel h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:16px;
+    font-weight:700;
+    margin:0 0 18px;
+  }
+
+  .tool-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:10px;
+  }
+  .tool-btn{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:16px 8px;
+    border-radius:12px;
+    border:1.5px solid var(--line);
+    background:#fbfbfc;
+    color:var(--ink-soft);
+    cursor:pointer;
+    font-family:'Inter', sans-serif;
+    font-size:11.5px;
+    font-weight:600;
+    text-align:center;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  }
+  .tool-btn svg{ width:22px; height:22px; }
+  .tool-btn:hover{
+    border-color:#f3b8d0;
+    color:var(--ink);
+    transform:translateY(-1px);
+  }
+  .tool-btn.active{
+    border-color:var(--accent);
+    background:var(--accent-soft);
+    color:var(--accent-dark);
+  }
+
+  .tool-hint{
+    margin-top:16px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+    font-size:12px;
+    color:var(--ink-soft);
+    line-height:1.6;
+    text-align:center;
+  }
+
+  /* ---------- tool detail views ---------- */
+  .tool-detail{ display:none; }
+  .tool-detail.show{ display:block; }
+
+  .tool-detail-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:20px;
+  }
+  .tool-detail-head .mini-icon{
+    width:30px; height:30px;
+    border-radius:8px;
+    background:var(--accent-soft);
+    color:var(--accent-dark);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .tool-detail-head .mini-icon svg{ width:16px; height:16px; }
+  .tool-detail-head h3{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:15px;
+    font-weight:700;
+    margin:0;
+  }
+
+  .axis-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .axis-icon{
+    width:30px; height:30px;
+    border-radius:8px;
+    background:#fbfbfc;
+    border:1.5px solid var(--line);
+    color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .axis-icon svg{ width:16px; height:16px; }
+  .axis-row input[type=range]{
+    flex:1;
+    accent-color:var(--accent);
+  }
+  .axis-value{
+    width:64px;
+    flex-shrink:0;
+    text-align:right;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+
+  .lock-row{
+    display:flex;
+    justify-content:center;
+    margin:6px 0;
+  }
+  .lock-btn{
+    width:32px; height:32px;
+    border-radius:50%;
+    border:1.5px solid var(--line);
+    background:#fff;
+    color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+  .lock-btn svg{ width:15px; height:15px; }
+  .lock-btn.locked{
+    border-color:var(--accent);
+    color:var(--accent-dark);
+    background:var(--accent-soft);
+  }
+
+  .range-limits{
+    display:flex;
+    justify-content:space-between;
+    font-size:10.5px;
+    color:#9aa2ae;
+    margin-top:4px;
+    padding-left:42px;
+    padding-right:64px;
+  }
+
+  .tool-note{
+    margin-top:18px;
+    font-size:11.5px;
+    color:var(--ink-soft);
+    line-height:1.6;
+    text-align:center;
+  }
+
+  .tool-actions{
+    display:flex;
+    gap:10px;
+    margin-top:24px;
+  }
+  .back-btn, .go-btn{
+    flex:1;
+    padding:12px;
+    border-radius:10px;
+    font-size:13.5px;
+    font-weight:700;
+    font-family:'Inter', sans-serif;
+    cursor:pointer;
+    border:none;
+    transition: background 0.15s ease, transform 0.15s ease, opacity 0.2s ease;
+  }
+  .back-btn{
+    background:#fbfbfc;
+    border:1.5px solid var(--line);
+    color:var(--ink);
+  }
+  .back-btn:hover{ border-color:#c7cdd7; }
+  .go-btn{
+    background:var(--accent);
+    color:#fff;
+  }
+  .go-btn:hover{ background:var(--accent-dark); transform:translateY(-1px); }
+  .go-btn:disabled{ opacity:0.55; cursor:not-allowed; transform:none; }
+
+  .placeholder-note{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    line-height:1.7;
+    text-align:center;
+    padding:20px 6px;
+  }
+
+  /* ---------- shared controls for Crop / Optimize / Convert / Rotate ---------- */
+  .field-label{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    margin-bottom:10px;
+  }
+  .detail-block{ margin-bottom:22px; }
+  .detail-block:last-of-type{ margin-bottom:0; }
+
+  .opt-group{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .opt-pill{
+    border:1.5px solid var(--line);
+    background:#fbfbfc;
+    color:var(--ink-soft);
+    font-size:12px;
+    font-weight:600;
+    padding:8px 14px;
+    border-radius:999px;
+    cursor:pointer;
+    font-family:'Inter', sans-serif;
+    transition: all 0.15s ease;
+  }
+  .opt-pill:hover{ border-color:#c7cdd7; }
+  .opt-pill.active{
+    background:var(--ink);
+    border-color:var(--ink);
+    color:#fff;
+  }
+
+  .custom-ratio-row{
+    display:none;
+    align-items:center;
+    gap:8px;
+    margin-top:10px;
+  }
+  .custom-ratio-row.show{ display:flex; }
+  .custom-ratio-row input{
+    width:60px;
+    padding:8px 9px;
+    border-radius:8px;
+    border:1.5px solid var(--line);
+    font-size:13px;
+    text-align:center;
+    font-family:'Inter', sans-serif;
+  }
+  .custom-ratio-row span{ color:var(--ink-soft); font-size:13px; }
+
+  .mode-pair{
+    display:flex;
+    gap:8px;
+  }
+  .mode-pill{
+    flex:1;
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    padding:11px 10px;
+    background:#fbfbfc;
+    cursor:pointer;
+    text-align:center;
+    transition: all 0.15s ease;
+  }
+  .mode-pill .mtitle{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .mode-pill .mdesc{
+    font-size:10.5px;
+    color:var(--ink-soft);
+    margin-top:2px;
+    line-height:1.4;
+  }
+  .mode-pill.active{
+    border-color:var(--accent);
+    background:var(--accent-soft);
+  }
+
+  .bgcolor-inline{
+    display:none;
+    align-items:center;
+    gap:10px;
+    margin-top:14px;
+  }
+  .bgcolor-inline.show{ display:flex; }
+  .bgcolor-inline label{ font-size:12px; color:var(--ink-soft); }
+  .bgcolor-inline input[type=color]{
+    width:32px; height:32px;
+    border:1.5px solid var(--line);
+    border-radius:7px;
+    padding:2px;
+    cursor:pointer;
+    background:none;
+  }
+  .bgcolor-inline input[type=text]{
+    width:88px;
+    padding:7px 9px;
+    border-radius:7px;
+    border:1.5px solid var(--line);
+    font-size:12px;
+    text-transform:uppercase;
+    font-family:'Inter', sans-serif;
+  }
+
+  .check-row{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:12px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .check-row:last-of-type{ border-bottom:none; }
+  .check-row input[type=checkbox]{
+    margin-top:2px;
+    width:16px; height:16px;
+    accent-color:var(--accent);
+    flex-shrink:0;
+    cursor:pointer;
+  }
+  .check-row .check-body{ flex:1; }
+  .check-row .check-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .check-row .check-desc{
+    font-size:11.5px;
+    color:var(--ink-soft);
+    margin-top:2px;
+    line-height:1.5;
+  }
+  .check-sub{
+    display:none;
+    margin-top:8px;
+  }
+  .check-sub.show{ display:block; }
+  .check-sub select{
+    padding:7px 10px;
+    border-radius:7px;
+    border:1.5px solid var(--line);
+    font-size:12px;
+    font-family:'Inter', sans-serif;
+    color:var(--ink);
+    background:#fff;
+  }
+
+  .flip-row{
+    display:flex;
+    gap:8px;
+  }
+  .flip-btn{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    padding:10px;
+    background:#fbfbfc;
+    cursor:pointer;
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink-soft);
+    font-family:'Inter', sans-serif;
+    transition: all 0.15s ease;
+  }
+  .flip-btn svg{ width:15px; height:15px; }
+  .flip-btn.active{
+    border-color:var(--accent);
+    background:var(--accent-soft);
+    color:var(--accent-dark);
+  }
+
+  .video-stage{ display:none; width:100%; max-height:52vh; border-radius:8px; }
+
+  @media (max-width:860px){
+    .studio-grid{ grid-template-columns:1fr; }
+  }
+  @media (max-width:480px){
+    .panel, .preview-panel, .edit-panel{ padding:18px; }
+    .range-limits{ padding-left:0; padding-right:0; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span>NANALAB</div>
+    <div class="app-title">Smart GIF Studio</div>
+  </div>
+
+  <!-- ============ Upload view ============ -->
+  <div id="uploadView">
+    <div class="hero">
+      <h1>Free GIF Editor</h1>
+      <p class="desc">Edit your GIF files for free! Resize, downscale, crop, adjust the frame rate, and more — all available at no cost.</p>
+      <p class="privacy">All data is processed only on your own computer's browser. Since nothing is transmitted externally, you can use it with confidence and no worries about data leaks.</p>
+    </div>
+
+    <div class="panel">
+      <div class="dropzone" id="dropzone">
+        <svg viewBox="0 0 48 48" fill="none">
+          <rect x="6" y="10" width="36" height="28" rx="4" stroke="#e11f66" stroke-width="3"/>
+          <circle cx="16" cy="20" r="3.5" fill="#e11f66"/>
+          <path d="M10 32l9-9 7 7 6-6 8 8" stroke="#151a23" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+        <div class="dz-title">GIF 파일을 끌어다 놓으세요</div>
+        <div class="dz-sub">또는 버튼으로 직접 선택하세요</div>
+        <button class="select-btn" id="selectBtn" type="button">Choose File</button>
+        <input type="file" id="fileInput" accept=".gif,image/gif">
+      </div>
+      <div class="error-toast" id="errorToast"></div>
+    </div>
+  </div>
+
+  <!-- ============ Studio view ============ -->
+  <div id="studioView">
+    <div class="studio-topline">
+      <div class="file-chip">현재 파일 · <strong id="fileNameLabel"></strong></div>
+      <button class="change-btn" id="changeBtn">Choose Another File</button>
+    </div>
+
+    <div class="studio-grid">
+      <div class="left-column">
+
+        <div class="preview-panel" id="originalPanel">
+          <div class="preview-panel-head">
+            <button class="collapse-btn" id="originalCollapseBtn" type="button" title="패널 접기/펼치기">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <span class="preview-panel-title">Original GIF</span>
+          </div>
+          <div class="preview-panel-body">
+            <div class="preview-stage">
+              <img id="gifPreview" alt="GIF preview">
+            </div>
+            <div class="preview-meta">
+              <span>크기: <strong id="metaSize">-</strong></span>
+              <span>해상도: <strong id="metaDims">-</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-panel resized-panel" id="resizedPanel">
+          <div class="preview-panel-head">
+            <span class="preview-panel-title" id="resizedPanelTitle">Resized GIF</span>
+          </div>
+          <div class="preview-panel-body">
+            <div class="preview-stage">
+              <img id="resizedPreview" alt="Result preview">
+              <video id="resizedVideo" class="video-stage" controls loop muted playsinline></video>
+            </div>
+            <div class="preview-meta">
+              <span>크기: <strong id="resizedMetaSize">-</strong></span>
+              <span id="resizedDimsRow">해상도: <strong id="resizedMetaDims">-</strong></span>
+            </div>
+            <button class="download-resized-btn" id="downloadResizedBtn" type="button">다운로드</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="edit-panel">
+        <h2 id="editPanelTitle">Editor Tools</h2>
+
+        <!-- default tool grid -->
+        <div id="toolGridView">
+          <div class="tool-grid" id="toolGrid">
+            <button class="tool-btn" data-tool="resize" type="button">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 10V4h6M20 14v6h-6M4 4l7 7M20 20l-7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Resize</span>
+            </button>
+
+            <button class="tool-btn" data-tool="crop" type="button">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M7 2v15a2 2 0 0 0 2 2h13M17 22V7a2 2 0 0 0-2-2H2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Crop</span>
+            </button>
+
+            <button class="tool-btn" data-tool="downsize" type="button">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Downsizing</span>
+            </button>
+
+            <button class="tool-btn" data-tool="convert" type="button">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h13l-3-3M20 17H7l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Format Convert</span>
+            </button>
+
+            <button class="tool-btn" data-tool="rotate" type="button">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 1 3 6.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 18v-5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Rotate</span>
+            </button>
+
+            <button class="tool-btn" data-tool="optimize" type="button">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+              <span>Optimize</span>
+            </button>
+
+            <button class="tool-btn" data-tool="reverse" type="button">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M17 2 21 6l-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 12v-1a5 5 0 0 1 5-5h13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 22 3 18l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v1a5 5 0 0 1-5 5H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              <span>Reverse</span>
+            </button>
+
+            <button class="tool-btn" data-tool="speed" type="button">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 15a8 8 0 1 1 16 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 15l4.5-5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15" r="1.4" fill="currentColor"/></svg>
+              <span>Speed</span>
+            </button>
+
+            <button class="tool-btn" data-tool="cut" type="button">
+              <svg viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.5" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="18" r="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 7.5 20 19M20 5 8 16.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              <span>Cut</span>
+            </button>
+          </div>
+
+          <div class="tool-hint" id="toolHint">도구를 선택하면 옵션이 이곳에 표시될 예정이에요.</div>
+        </div>
+
+        <!-- Resize detail view -->
+        <div class="tool-detail" id="detailResize">
+          <div class="tool-detail-head">
+            <span class="mini-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 10V4h6M20 14v6h-6M4 4l7 7M20 20l-7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <h3>Resize</h3>
+          </div>
+
+          <div class="axis-row">
+            <div class="axis-icon" title="X축(가로)">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M3 12h18M3 12l4-4M3 12l4 4M21 12l-4-4M21 12l-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <input type="range" id="resizeXRange" min="1" max="100" value="50">
+            <div class="axis-value" id="resizeXVal">- px</div>
+          </div>
+          <div class="range-limits"><span id="xMinLabel">-</span><span id="xMaxLabel">-</span></div>
+
+          <div class="lock-row">
+            <button class="lock-btn locked" id="lockToggleBtn" type="button" title="가로/세로 비율 고정">
+              <svg id="lockIconClosed" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              <svg id="lockIconOpen" viewBox="0 0 24 24" fill="none" style="display:none;"><rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 11V7a4 4 0 0 1 7.5-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+
+          <div class="axis-row">
+            <div class="axis-icon" title="Y축(세로)">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M12 3l-4 4M12 3l4 4M12 21l-4-4M12 21l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <input type="range" id="resizeYRange" min="1" max="100" value="50">
+            <div class="axis-value" id="resizeYVal">- px</div>
+          </div>
+          <div class="range-limits"><span id="yMinLabel">-</span><span id="yMaxLabel">-</span></div>
+
+          <div class="tool-note" id="resizeStatusNote">최소 5% · 최대 300% 범위에서 조절할 수 있어요.</div>
+
+          <div class="tool-actions">
+            <button class="back-btn" id="resizeBackBtn" type="button">Back</button>
+            <button class="go-btn" id="resizeGoBtn" type="button">Go</button>
+          </div>
+        </div>
+
+        <!-- Crop detail view -->
+        <div class="tool-detail" id="detailCrop">
+          <div class="tool-detail-head">
+            <span class="mini-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M7 2v15a2 2 0 0 0 2 2h13M17 22V7a2 2 0 0 0-2-2H2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <h3>Crop</h3>
+          </div>
+
+          <div class="detail-block">
+            <div class="field-label">캔버스 비율</div>
+            <div class="opt-group" id="cropRatioGroup">
+              <button class="opt-pill active" data-ratio="1:1" type="button">1:1</button>
+              <button class="opt-pill" data-ratio="3:4" type="button">3:4</button>
+              <button class="opt-pill" data-ratio="4:3" type="button">4:3</button>
+              <button class="opt-pill" data-ratio="9:16" type="button">9:16</button>
+              <button class="opt-pill" data-ratio="16:9" type="button">16:9</button>
+              <button class="opt-pill" data-ratio="custom" type="button">커스텀</button>
+            </div>
+            <div class="custom-ratio-row" id="cropCustomRow">
+              <input type="number" id="cropCustomW" min="1" value="1">
+              <span>:</span>
+              <input type="number" id="cropCustomH" min="1" value="1">
+            </div>
+          </div>
+
+          <div class="detail-block">
+            <div class="field-label">빈 공간 처리 방식</div>
+            <div class="mode-pair">
+              <div class="mode-pill active" data-mode="pad" id="cropModePad">
+                <div class="mtitle">단색 채우기</div>
+                <div class="mdesc">여백을 지정한 색으로 채워요</div>
+              </div>
+              <div class="mode-pill" data-mode="cover" id="cropModeCover">
+                <div class="mtitle">확대해서 채우기</div>
+                <div class="mdesc">이미지를 키워 빈 공간을 없애요</div>
+              </div>
+            </div>
+            <div class="bgcolor-inline show" id="cropBgRow">
+              <label>여백 색상</label>
+              <input type="color" id="cropBgColorPicker" value="#ffffff">
+              <input type="text" id="cropBgColorText" value="#FFFFFF" maxlength="7">
+            </div>
+          </div>
+
+          <div class="tool-note" id="cropStatusNote">비율과 처리 방식을 고른 뒤 Go를 눌러주세요.</div>
+
+          <div class="tool-actions">
+            <button class="back-btn" id="cropBackBtn" type="button">Back</button>
+            <button class="go-btn" id="cropGoBtn" type="button">Go</button>
+          </div>
+        </div>
+
+        <!-- Optimize detail view -->
+        <div class="tool-detail" id="detailOptimize">
+          <div class="tool-detail-head">
+            <span class="mini-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+            <h3>Optimize</h3>
+          </div>
+
+          <div class="check-row">
+            <input type="checkbox" id="optLossless">
+            <div class="check-body">
+              <label class="check-title" for="optLossless">무손실 최적화</label>
+              <div class="check-desc">화질 손실 없이 중복된 프레임을 정리해 최대한 원본 화질을 유지한 채 용량을 줄여요.</div>
+            </div>
+          </div>
+
+          <div class="check-row">
+            <input type="checkbox" id="optShrink">
+            <div class="check-body">
+              <label class="check-title" for="optShrink">사이즈 축소</label>
+              <div class="check-desc">색상 압축을 더 강하게 적용해 화질을 살짝 낮추는 대신 파일 용량을 줄여요.</div>
+            </div>
+          </div>
+
+          <div class="check-row">
+            <input type="checkbox" id="optDropFrames">
+            <div class="check-body">
+              <label class="check-title" for="optDropFrames">프레임 삭제</label>
+              <div class="check-desc">일부 프레임을 건너뛰어 전체 프레임 수를 줄여요. 재생 시간은 유지돼요.</div>
+              <div class="check-sub" id="optDropSub">
+                <select id="optDropRate">
+                  <option value="2">프레임 절반 삭제 (2개 중 1개 유지)</option>
+                  <option value="3">프레임 2/3 삭제 (3개 중 1개 유지)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="check-row">
+            <input type="checkbox" id="optDownscale">
+            <div class="check-body">
+              <label class="check-title" for="optDownscale">해상도 낮추기</label>
+              <div class="check-desc">가로·세로 해상도를 줄여 용량을 줄여요.</div>
+              <div class="check-sub" id="optDownscaleSub">
+                <select id="optDownscaleRate">
+                  <option value="0.75">75%로 축소</option>
+                  <option value="0.5" selected>50%로 축소</option>
+                  <option value="0.25">25%로 축소</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="tool-note" id="optimizeStatusNote">하나 이상 선택한 뒤 Go를 눌러주세요.</div>
+
+          <div class="tool-actions">
+            <button class="back-btn" id="optimizeBackBtn" type="button">Back</button>
+            <button class="go-btn" id="optimizeGoBtn" type="button" disabled>Go</button>
+          </div>
+        </div>
+
+        <!-- Format Convert detail view -->
+        <div class="tool-detail" id="detailConvert">
+          <div class="tool-detail-head">
+            <span class="mini-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h13l-3-3M20 17H7l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <h3>Format Convert</h3>
+          </div>
+
+          <div class="detail-block">
+            <div class="field-label">변환할 형식</div>
+            <div class="opt-group" id="convertFormatGroup">
+              <button class="opt-pill active" data-format="mp4" type="button">MP4</button>
+              <button class="opt-pill" data-format="jpg" type="button">JPG</button>
+            </div>
+          </div>
+
+          <div class="tool-note" id="convertStatusNote">MP4는 첫 로딩 시 변환 엔진을 내려받느라 시간이 조금 더 걸릴 수 있어요. JPG는 GIF의 첫 프레임을 이미지로 저장해요.</div>
+
+          <div class="tool-actions">
+            <button class="back-btn" id="convertBackBtn" type="button">Back</button>
+            <button class="go-btn" id="convertGoBtn" type="button">Go</button>
+          </div>
+        </div>
+
+        <!-- Rotate detail view -->
+        <div class="tool-detail" id="detailRotate">
+          <div class="tool-detail-head">
+            <span class="mini-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 1 3 6.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 18v-5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <h3>Rotate</h3>
+          </div>
+
+          <div class="detail-block">
+            <div class="field-label">회전 각도</div>
+            <div class="opt-group" id="rotateDegGroup">
+              <button class="opt-pill active" data-deg="0" type="button">0°</button>
+              <button class="opt-pill" data-deg="90" type="button">90°</button>
+              <button class="opt-pill" data-deg="180" type="button">180°</button>
+              <button class="opt-pill" data-deg="270" type="button">270°</button>
+            </div>
+          </div>
+
+          <div class="detail-block">
+            <div class="field-label">뒤집기</div>
+            <div class="flip-row">
+              <button class="flip-btn" id="flipHBtn" type="button">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M7 7l-4 5 4 5M17 7l4 5-4 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                좌우 반전
+              </button>
+              <button class="flip-btn" id="flipVBtn" type="button">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M3 12h18M7 7l5-4 5 4M7 17l5 4 5-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                상하 반전
+              </button>
+            </div>
+          </div>
+
+          <div class="tool-note" id="rotateStatusNote">각도와 뒤집기를 고른 뒤 Go를 눌러주세요.</div>
+
+          <div class="tool-actions">
+            <button class="back-btn" id="rotateBackBtn" type="button">Back</button>
+            <button class="go-btn" id="rotateGoBtn" type="button">Go</button>
+          </div>
+        </div>
+
+        <!-- Reverse detail view -->
+        <div class="tool-detail" id="detailReverse">
+          <div class="tool-detail-head">
+            <span class="mini-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M17 2 21 6l-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 12v-1a5 5 0 0 1 5-5h13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 22 3 18l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v1a5 5 0 0 1-5 5H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+            <h3>Reverse</h3>
+          </div>
+          <div class="placeholder-note" style="padding-top:0;">GIF의 프레임 순서를 거꾸로 뒤집어 역재생되는 애니메이션을 만들어요.</div>
+          <div class="tool-note" id="reverseStatusNote">Go를 누르면 바로 적용돼요.</div>
+          <div class="tool-actions">
+            <button class="back-btn" id="reverseBackBtn" type="button">Back</button>
+            <button class="go-btn" id="reverseGoBtn" type="button">Go</button>
+          </div>
+        </div>
+
+        <!-- Speed detail view -->
+        <div class="tool-detail" id="detailSpeed">
+          <div class="tool-detail-head">
+            <span class="mini-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 15a8 8 0 1 1 16 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 15l4.5-5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15" r="1.4" fill="currentColor"/></svg></span>
+            <h3>Speed</h3>
+          </div>
+
+          <div class="detail-block">
+            <div class="field-label">재생 속도</div>
+            <div class="axis-row">
+              <div class="axis-icon" title="속도">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 15a8 8 0 1 1 16 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 15l4.5-5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15" r="1.4" fill="currentColor"/></svg>
+              </div>
+              <input type="range" id="speedRange" min="25" max="400" value="100" step="5">
+              <div class="axis-value" id="speedVal">1.00x</div>
+            </div>
+            <div class="range-limits"><span>0.25x</span><span>4x</span></div>
+          </div>
+
+          <div class="tool-note" id="speedStatusNote">배속을 정한 뒤 Go를 눌러주세요. 1x보다 크면 빨라지고, 작으면 느려져요.</div>
+
+          <div class="tool-actions">
+            <button class="back-btn" id="speedBackBtn" type="button">Back</button>
+            <button class="go-btn" id="speedGoBtn" type="button">Go</button>
+          </div>
+        </div>
+
+        <!-- Cut detail view -->
+        <div class="tool-detail" id="detailCut">
+          <div class="tool-detail-head">
+            <span class="mini-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.5" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="18" r="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 7.5 20 19M20 5 8 16.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+            <h3>Cut</h3>
+          </div>
+
+          <div class="detail-block">
+            <div class="field-label">시작 프레임</div>
+            <div class="axis-row">
+              <input type="range" id="cutStartRange" min="0" max="1" value="0">
+              <div class="axis-value" id="cutStartVal">0.0s</div>
+            </div>
+          </div>
+
+          <div class="detail-block">
+            <div class="field-label">끝 프레임</div>
+            <div class="axis-row">
+              <input type="range" id="cutEndRange" min="0" max="1" value="1">
+              <div class="axis-value" id="cutEndVal">0.0s</div>
+            </div>
+          </div>
+
+          <div class="tool-note" id="cutStatusNote">GIF를 불러오는 중…</div>
+
+          <div class="tool-actions">
+            <button class="back-btn" id="cutBackBtn" type="button">Back</button>
+            <button class="go-btn" id="cutGoBtn" type="button" disabled>Go</button>
+          </div>
+        </div>
+
+        <!-- Generic "coming soon" detail view for the other remaining tools -->
+        <div class="tool-detail" id="detailGeneric">
+          <div class="tool-detail-head">
+            <span class="mini-icon" id="genericIcon"></span>
+            <h3 id="genericTitle">Tool</h3>
+          </div>
+          <div class="placeholder-note">이 도구는 아직 준비 중이에요. 곧 사용할 수 있게 만들게요!</div>
+          <div class="tool-actions">
+            <button class="back-btn" id="genericBackBtn" type="button" style="flex:1;">Back</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+  import { parseGIF, decompressFrames } from 'https://cdn.jsdelivr.net/npm/gifuct-js/+esm';
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const selectBtn = document.getElementById('selectBtn');
+  const errorToast = document.getElementById('errorToast');
+
+  const uploadView = document.getElementById('uploadView');
+  const studioView = document.getElementById('studioView');
+  const gifPreview = document.getElementById('gifPreview');
+  const fileNameLabel = document.getElementById('fileNameLabel');
+  const metaSize = document.getElementById('metaSize');
+  const metaDims = document.getElementById('metaDims');
+  const changeBtn = document.getElementById('changeBtn');
+
+  const originalPanel = document.getElementById('originalPanel');
+  const originalCollapseBtn = document.getElementById('originalCollapseBtn');
+  const resizedPanel = document.getElementById('resizedPanel');
+  const resizedPreview = document.getElementById('resizedPreview');
+  const resizedMetaSize = document.getElementById('resizedMetaSize');
+  const resizedMetaDims = document.getElementById('resizedMetaDims');
+  const downloadResizedBtn = document.getElementById('downloadResizedBtn');
+
+  const resizedVideo = document.getElementById('resizedVideo');
+  const resizedPanelTitle = document.getElementById('resizedPanelTitle');
+  const resizedDimsRow = document.getElementById('resizedDimsRow');
+
+  const editPanelTitle = document.getElementById('editPanelTitle');
+  const toolGridView = document.getElementById('toolGridView');
+  const toolGrid = document.getElementById('toolGrid');
+  const detailResize = document.getElementById('detailResize');
+  const detailCrop = document.getElementById('detailCrop');
+  const detailOptimize = document.getElementById('detailOptimize');
+  const detailConvert = document.getElementById('detailConvert');
+  const detailRotate = document.getElementById('detailRotate');
+  const detailReverse = document.getElementById('detailReverse');
+  const detailSpeed = document.getElementById('detailSpeed');
+  const detailCut = document.getElementById('detailCut');
+  const detailGeneric = document.getElementById('detailGeneric');
+  const genericTitle = document.getElementById('genericTitle');
+  const genericIcon = document.getElementById('genericIcon');
+  const genericBackBtn = document.getElementById('genericBackBtn');
+
+  const ALL_DETAILS = [detailResize, detailCrop, detailOptimize, detailConvert, detailRotate, detailReverse, detailSpeed, detailCut, detailGeneric];
+
+  const resizeXRange = document.getElementById('resizeXRange');
+  const resizeYRange = document.getElementById('resizeYRange');
+  const resizeXVal = document.getElementById('resizeXVal');
+  const resizeYVal = document.getElementById('resizeYVal');
+  const xMinLabel = document.getElementById('xMinLabel');
+  const xMaxLabel = document.getElementById('xMaxLabel');
+  const yMinLabel = document.getElementById('yMinLabel');
+  const yMaxLabel = document.getElementById('yMaxLabel');
+  const lockToggleBtn = document.getElementById('lockToggleBtn');
+  const lockIconClosed = document.getElementById('lockIconClosed');
+  const lockIconOpen = document.getElementById('lockIconOpen');
+  const resizeBackBtn = document.getElementById('resizeBackBtn');
+  const resizeGoBtn = document.getElementById('resizeGoBtn');
+  const resizeStatusNote = document.getElementById('resizeStatusNote');
+
+  // crop refs
+  const cropRatioGroup = document.getElementById('cropRatioGroup');
+  const cropCustomRow = document.getElementById('cropCustomRow');
+  const cropCustomW = document.getElementById('cropCustomW');
+  const cropCustomH = document.getElementById('cropCustomH');
+  const cropModePad = document.getElementById('cropModePad');
+  const cropModeCover = document.getElementById('cropModeCover');
+  const cropBgRow = document.getElementById('cropBgRow');
+  const cropBgColorPicker = document.getElementById('cropBgColorPicker');
+  const cropBgColorText = document.getElementById('cropBgColorText');
+  const cropBackBtn = document.getElementById('cropBackBtn');
+  const cropGoBtn = document.getElementById('cropGoBtn');
+  const cropStatusNote = document.getElementById('cropStatusNote');
+  let cropRatio = { w:1, h:1 };
+  let cropMode = 'pad';
+  let cropBgColor = '#ffffff';
+
+  // optimize refs
+  const optLossless = document.getElementById('optLossless');
+  const optShrink = document.getElementById('optShrink');
+  const optDropFrames = document.getElementById('optDropFrames');
+  const optDropSub = document.getElementById('optDropSub');
+  const optDropRate = document.getElementById('optDropRate');
+  const optDownscale = document.getElementById('optDownscale');
+  const optDownscaleSub = document.getElementById('optDownscaleSub');
+  const optDownscaleRate = document.getElementById('optDownscaleRate');
+  const optimizeBackBtn = document.getElementById('optimizeBackBtn');
+  const optimizeGoBtn = document.getElementById('optimizeGoBtn');
+  const optimizeStatusNote = document.getElementById('optimizeStatusNote');
+
+  // convert refs
+  const convertFormatGroup = document.getElementById('convertFormatGroup');
+  const convertBackBtn = document.getElementById('convertBackBtn');
+  const convertGoBtn = document.getElementById('convertGoBtn');
+  const convertStatusNote = document.getElementById('convertStatusNote');
+  let convertFormat = 'mp4';
+
+  // rotate refs
+  const rotateDegGroup = document.getElementById('rotateDegGroup');
+  const flipHBtn = document.getElementById('flipHBtn');
+  const flipVBtn = document.getElementById('flipVBtn');
+  const rotateBackBtn = document.getElementById('rotateBackBtn');
+  const rotateGoBtn = document.getElementById('rotateGoBtn');
+  const rotateStatusNote = document.getElementById('rotateStatusNote');
+  let rotateDeg = 0;
+  let flipH = false;
+  let flipV = false;
+
+  // reverse refs
+  const reverseBackBtn = document.getElementById('reverseBackBtn');
+  const reverseGoBtn = document.getElementById('reverseGoBtn');
+  const reverseStatusNote = document.getElementById('reverseStatusNote');
+
+  // speed refs
+  const speedRange = document.getElementById('speedRange');
+  const speedVal = document.getElementById('speedVal');
+  const speedBackBtn = document.getElementById('speedBackBtn');
+  const speedGoBtn = document.getElementById('speedGoBtn');
+  const speedStatusNote = document.getElementById('speedStatusNote');
+
+  // cut refs
+  const cutStartRange = document.getElementById('cutStartRange');
+  const cutEndRange = document.getElementById('cutEndRange');
+  const cutStartVal = document.getElementById('cutStartVal');
+  const cutEndVal = document.getElementById('cutEndVal');
+  const cutBackBtn = document.getElementById('cutBackBtn');
+  const cutGoBtn = document.getElementById('cutGoBtn');
+  const cutStatusNote = document.getElementById('cutStatusNote');
+
+  const TOOL_LABELS = {
+    resize: 'Resize', crop: 'Crop', downsize: 'Downsizing', convert: 'Format Convert',
+    rotate: 'Rotate', optimize: 'Optimize', reverse: 'Reverse', speed: 'Speed', cut: 'Cut'
+  };
+
+  let currentUrl = null;
+  let currentFile = null;
+  let origW = 0, origH = 0;
+  let aspectLocked = true;
+  let workerBlobUrlPromise = null;
+  let resizedBlobUrl = null;
+  let ffmpegInstance = null;
+  let cachedDecode = null; // { file, composed, gifW, gifH }
+  let cutCumulativeMs = [];
+  let cutTotalFrames = 0;
+
+  function getWorkerScriptUrl(){
+    if(!workerBlobUrlPromise){
+      workerBlobUrlPromise = fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js')
+        .then(res => res.blob())
+        .then(blob => URL.createObjectURL(blob));
+    }
+    return workerBlobUrlPromise;
+  }
+
+  function fmtSize(bytes){
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/1024/1024).toFixed(2) + ' MB';
+  }
+
+  function showError(msg){
+    errorToast.textContent = msg;
+    errorToast.classList.add('show');
+    clearTimeout(showError._t);
+    showError._t = setTimeout(() => errorToast.classList.remove('show'), 4200);
+  }
+
+  // ---------- shared GIF decode / encode helpers ----------
+  async function decodeAndComposeFrames(file){
+    const buffer = await file.arrayBuffer();
+    const gifData = parseGIF(buffer);
+    const frames = decompressFrames(gifData, true);
+    const gifW = gifData.lsd.width;
+    const gifH = gifData.lsd.height;
+
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = gifW; tempCanvas.height = gifH;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    const composed = [];
+    frames.forEach((frame, idx) => {
+      if(idx === 0 || frame.disposalType === 2){
+        tempCtx.clearRect(0, 0, gifW, gifH);
+      }
+      const imgData = new ImageData(new Uint8ClampedArray(frame.patch), frame.dims.width, frame.dims.height);
+      tempCtx.putImageData(imgData, frame.dims.left, frame.dims.top);
+
+      const snap = document.createElement('canvas');
+      snap.width = gifW; snap.height = gifH;
+      snap.getContext('2d').drawImage(tempCanvas, 0, 0);
+      composed.push({ canvas: snap, delay: frame.delay || 100 });
+    });
+
+    return { composed, gifW, gifH };
+  }
+
+  // caches the decoded/composed frames per file so switching between tools
+  // (or reopening Cut to inspect frame count) doesn't re-decode every time
+  async function getComposedFrames(file){
+    if(cachedDecode && cachedDecode.file === file) return cachedDecode;
+    const result = await decodeAndComposeFrames(file);
+    cachedDecode = { file, ...result };
+    return cachedDecode;
+  }
+
+  async function encodeFramesToGif(frameList, outW, outH, quality, statusEl){
+    const workerScript = await getWorkerScriptUrl();
+    const gif = new GIF({ workers:2, quality: quality || 10, workerScript, width: outW, height: outH });
+    frameList.forEach(f => gif.addFrame(f.canvas, { copy:true, delay: f.delay }));
+    return new Promise((resolve) => {
+      gif.on('progress', (p) => {
+        if(statusEl) statusEl.textContent = `GIF 인코딩 중… ${Math.round(p*100)}%`;
+      });
+      gif.on('finished', (b) => resolve(b));
+      gif.render();
+    });
+  }
+
+  // shows the finished result (GIF/JPG image or MP4 video) in the left "result" panel
+  function showResult({ blob, title, dims, filename }){
+    if(resizedBlobUrl) URL.revokeObjectURL(resizedBlobUrl);
+    resizedBlobUrl = URL.createObjectURL(blob);
+
+    resizedPanelTitle.textContent = title;
+    resizedMetaSize.textContent = fmtSize(blob.size);
+
+    const isVideo = blob.type.startsWith('video/');
+    if(isVideo){
+      resizedPreview.style.display = 'none';
+      resizedVideo.style.display = 'block';
+      resizedVideo.src = resizedBlobUrl;
+      resizedDimsRow.style.display = 'none';
+    } else {
+      resizedVideo.style.display = 'none';
+      resizedVideo.removeAttribute('src');
+      resizedPreview.style.display = 'block';
+      resizedPreview.src = resizedBlobUrl;
+      resizedDimsRow.style.display = 'inline';
+      resizedMetaDims.textContent = dims || '-';
+    }
+
+    downloadResizedBtn.onclick = () => {
+      const a = document.createElement('a');
+      a.href = resizedBlobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    };
+
+    originalPanel.classList.add('collapsed');
+    resizedPanel.classList.add('show');
+  }
+
+  // ---------- lazy-loaded ffmpeg.wasm for GIF -> MP4 ----------
+  function loadScriptOnce(src){
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[data-src="${src}"]`);
+      if(existing){ existing.addEventListener('load', () => resolve()); return; }
+      const s = document.createElement('script');
+      s.src = src;
+      s.dataset.src = src;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('script load failed: ' + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function getFFmpeg(statusEl){
+    if(ffmpegInstance) return ffmpegInstance;
+    if(!window.FFmpeg){
+      statusEl.textContent = '변환 엔진을 불러오는 중… (최초 1회만)';
+      await loadScriptOnce('https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js');
+    }
+    const { createFFmpeg } = window.FFmpeg;
+    const ffmpeg = createFFmpeg({ log:false });
+    statusEl.textContent = '엔진 초기화 중…';
+    await ffmpeg.load();
+    ffmpegInstance = ffmpeg;
+    return ffmpeg;
+  }
+
+  async function convertGifToMp4(file, statusEl){
+    const ffmpeg = await getFFmpeg(statusEl);
+    const { fetchFile } = window.FFmpeg;
+    statusEl.textContent = '영상으로 변환 중…';
+    ffmpeg.setProgress(({ ratio }) => {
+      if(ratio >= 0) statusEl.textContent = `영상으로 변환 중… ${Math.round(ratio*100)}%`;
+    });
+    ffmpeg.FS('writeFile', 'input.gif', await fetchFile(file));
+    await ffmpeg.run('-i', 'input.gif', '-movflags', 'faststart', '-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', 'output.mp4');
+    const data = ffmpeg.FS('readFile', 'output.mp4');
+    try{ ffmpeg.FS('unlink', 'input.gif'); ffmpeg.FS('unlink', 'output.mp4'); }catch(e){}
+    return new Blob([data.buffer], { type:'video/mp4' });
+  }
+
+  // ---------- upload wiring ----------
+  selectBtn.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('click', (e) => { if(e.target === selectBtn) return; fileInput.click(); });
+  fileInput.addEventListener('change', () => { handleFiles(fileInput.files); fileInput.value=''; });
+
+  ['dragenter','dragover'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('drag'); });
+  });
+  ['dragleave','drop'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if(evt === 'dragleave' && e.target !== dropzone) return;
+      dropzone.classList.remove('drag');
+    });
+  });
+  dropzone.addEventListener('drop', (e) => { if(e.dataTransfer && e.dataTransfer.files) handleFiles(e.dataTransfer.files); });
+
+  function handleFiles(fileListArg){
+    const files = Array.from(fileListArg);
+    if(!files.length) return;
+    const file = files[0];
+    const isGif = file.type === 'image/gif' || /\.gif$/i.test(file.name);
+    if(!isGif){ showError('GIF 파일만 업로드할 수 있어요.'); return; }
+    if(files.length > 1){ showError('한 번에 한 개의 GIF 파일만 편집할 수 있어요. 첫 번째 파일만 불러왔어요.'); }
+    loadFile(file);
+  }
+
+  // ---------- full state reset ----------
+  function resetWorkingState(){
+    showToolGrid();
+    toolGrid.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+
+    originalPanel.classList.remove('collapsed');
+
+    resizedPanel.classList.remove('show');
+    resizedPreview.src = '';
+    resizedPreview.style.display = 'block';
+    resizedVideo.removeAttribute('src');
+    resizedVideo.style.display = 'none';
+    resizedDimsRow.style.display = 'inline';
+    resizedMetaSize.textContent = '-';
+    resizedMetaDims.textContent = '-';
+    if(resizedBlobUrl){ URL.revokeObjectURL(resizedBlobUrl); resizedBlobUrl = null; }
+
+    aspectLocked = true;
+    setLockUI(true);
+
+    // reset crop
+    cropRatio = { w:1, h:1 };
+    cropMode = 'pad';
+    cropBgColor = '#ffffff';
+    cropRatioGroup.querySelectorAll('.opt-pill').forEach(p => p.classList.toggle('active', p.dataset.ratio === '1:1'));
+    cropCustomRow.classList.remove('show');
+    cropModePad.classList.add('active');
+    cropModeCover.classList.remove('active');
+    cropBgRow.classList.add('show');
+    cropBgColorPicker.value = '#ffffff';
+    cropBgColorText.value = '#FFFFFF';
+
+    // reset optimize
+    optLossless.checked = false;
+    optShrink.checked = false;
+    optDropFrames.checked = false;
+    optDownscale.checked = false;
+    optDropSub.classList.remove('show');
+    optDownscaleSub.classList.remove('show');
+    updateOptimizeGoState();
+
+    // reset convert
+    convertFormat = 'mp4';
+    convertFormatGroup.querySelectorAll('.opt-pill').forEach(p => p.classList.toggle('active', p.dataset.format === 'mp4'));
+
+    // reset rotate
+    rotateDeg = 0; flipH = false; flipV = false;
+    rotateDegGroup.querySelectorAll('.opt-pill').forEach(p => p.classList.toggle('active', p.dataset.deg === '0'));
+    flipHBtn.classList.remove('active');
+    flipVBtn.classList.remove('active');
+
+    // reset speed
+    speedRange.value = 100;
+    speedVal.textContent = '1.00x';
+
+    // reset cut
+    cutStartRange.min = 0; cutStartRange.max = 1; cutStartRange.value = 0;
+    cutEndRange.min = 0; cutEndRange.max = 1; cutEndRange.value = 1;
+    cutStartVal.textContent = '0.0s';
+    cutEndVal.textContent = '0.0s';
+    cutGoBtn.disabled = true;
+    cutStatusNote.textContent = 'GIF를 불러오는 중…';
+  }
+
+  function loadFile(file){
+    resetWorkingState();
+    cachedDecode = null;
+
+    if(currentUrl) URL.revokeObjectURL(currentUrl);
+    currentUrl = URL.createObjectURL(file);
+    currentFile = file;
+
+    gifPreview.src = currentUrl;
+    fileNameLabel.textContent = file.name;
+    metaSize.textContent = fmtSize(file.size);
+    metaDims.textContent = '-';
+
+    gifPreview.onload = () => {
+      origW = gifPreview.naturalWidth;
+      origH = gifPreview.naturalHeight;
+      metaDims.textContent = `${origW} × ${origH}`;
+    };
+
+    uploadView.style.display = 'none';
+    studioView.classList.add('show');
+  }
+
+  changeBtn.addEventListener('click', () => {
+    resetWorkingState();
+    studioView.classList.remove('show');
+    uploadView.style.display = 'block';
+    gifPreview.src = '';
+    fileNameLabel.textContent = '';
+    metaSize.textContent = '-';
+    metaDims.textContent = '-';
+    currentFile = null;
+    if(currentUrl){ URL.revokeObjectURL(currentUrl); currentUrl = null; }
+  });
+
+  // ---------- Original GIF panel collapse ----------
+  originalCollapseBtn.addEventListener('click', () => {
+    originalPanel.classList.toggle('collapsed');
+  });
+
+  // ---------- tool grid <-> detail switching ----------
+  function showToolGrid(){
+    toolGridView.style.display = 'block';
+    ALL_DETAILS.forEach(d => d.classList.remove('show'));
+    editPanelTitle.textContent = 'Editor Tools';
+  }
+
+  function showDetail(el, title){
+    toolGridView.style.display = 'none';
+    ALL_DETAILS.forEach(d => d.classList.remove('show'));
+    el.classList.add('show');
+    editPanelTitle.textContent = title;
+  }
+
+  function showResizeDetail(){
+    showDetail(detailResize, 'Resize');
+    initResizeControls();
+  }
+  function showCropDetail(){
+    showDetail(detailCrop, 'Crop');
+  }
+  function showOptimizeDetail(){
+    showDetail(detailOptimize, 'Optimize');
+  }
+  function showConvertDetail(){
+    showDetail(detailConvert, 'Format Convert');
+  }
+  function showRotateDetail(){
+    showDetail(detailRotate, 'Rotate');
+  }
+  function showReverseDetail(){
+    showDetail(detailReverse, 'Reverse');
+  }
+  function showSpeedDetail(){
+    showDetail(detailSpeed, 'Speed');
+  }
+  async function showCutDetail(){
+    showDetail(detailCut, 'Cut');
+    if(!currentFile) return;
+    cutGoBtn.disabled = true;
+    cutStatusNote.textContent = 'GIF를 분석하는 중…';
+    try{
+      const { composed } = await getComposedFrames(currentFile);
+      const n = composed.length;
+      const cumulative = [];
+      let t = 0;
+      composed.forEach(f => { t += f.delay; cumulative.push(t); });
+
+      cutStartRange.min = 0; cutStartRange.max = n - 1; cutStartRange.value = 0;
+      cutEndRange.min = 0; cutEndRange.max = n - 1; cutEndRange.value = n - 1;
+      cutCumulativeMs = cumulative;
+      cutTotalFrames = n;
+      updateCutLabels();
+      cutGoBtn.disabled = false;
+      cutStatusNote.textContent = `총 ${n}개 프레임 중 원하는 구간을 선택하세요.`;
+    } catch(err){
+      cutStatusNote.textContent = 'GIF 분석에 실패했어요.';
+    }
+  }
+  function showGenericDetail(toolKey, btnEl){
+    showDetail(detailGeneric, TOOL_LABELS[toolKey]);
+    genericTitle.textContent = TOOL_LABELS[toolKey];
+    genericIcon.innerHTML = btnEl.querySelector('svg').outerHTML;
+  }
+
+  const TOOL_ROUTES = {
+    resize: showResizeDetail,
+    crop: showCropDetail,
+    optimize: showOptimizeDetail,
+    convert: showConvertDetail,
+    rotate: showRotateDetail,
+    reverse: showReverseDetail,
+    speed: showSpeedDetail,
+    cut: showCutDetail
+  };
+
+  toolGrid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tool-btn');
+    if(!btn) return;
+    toolGrid.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tool = btn.dataset.tool;
+    if(TOOL_ROUTES[tool]){
+      TOOL_ROUTES[tool]();
+    } else {
+      showGenericDetail(tool, btn);
+    }
+  });
+
+  function backToGrid(){
+    toolGrid.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    showToolGrid();
+  }
+
+  genericBackBtn.addEventListener('click', backToGrid);
+  resizeBackBtn.addEventListener('click', backToGrid);
+  cropBackBtn.addEventListener('click', backToGrid);
+  optimizeBackBtn.addEventListener('click', backToGrid);
+  convertBackBtn.addEventListener('click', backToGrid);
+  rotateBackBtn.addEventListener('click', backToGrid);
+  reverseBackBtn.addEventListener('click', backToGrid);
+  speedBackBtn.addEventListener('click', backToGrid);
+  cutBackBtn.addEventListener('click', backToGrid);
+
+  // ---------- Resize controls ----------
+  function initResizeControls(){
+    if(!origW || !origH) return;
+    const xMin = Math.max(1, Math.round(origW * 0.05));
+    const xMax = Math.round(origW * 3);
+    const yMin = Math.max(1, Math.round(origH * 0.05));
+    const yMax = Math.round(origH * 3);
+
+    resizeXRange.min = xMin; resizeXRange.max = xMax; resizeXRange.value = origW;
+    resizeYRange.min = yMin; resizeYRange.max = yMax; resizeYRange.value = origH;
+
+    xMinLabel.textContent = xMin + 'px';
+    xMaxLabel.textContent = xMax + 'px';
+    yMinLabel.textContent = yMin + 'px';
+    yMaxLabel.textContent = yMax + 'px';
+
+    updateResizeLabels();
+  }
+
+  function updateResizeLabels(){
+    resizeXVal.textContent = resizeXRange.value + ' px';
+    resizeYVal.textContent = resizeYRange.value + ' px';
+  }
+
+  function setLockUI(locked){
+    lockToggleBtn.classList.toggle('locked', locked);
+    lockIconClosed.style.display = locked ? 'block' : 'none';
+    lockIconOpen.style.display = locked ? 'none' : 'block';
+  }
+
+  lockToggleBtn.addEventListener('click', () => {
+    aspectLocked = !aspectLocked;
+    setLockUI(aspectLocked);
+  });
+
+  resizeXRange.addEventListener('input', () => {
+    if(aspectLocked && origW){
+      const ratio = Number(resizeXRange.value) / origW;
+      const newY = Math.round(origH * ratio);
+      resizeYRange.value = Math.min(Number(resizeYRange.max), Math.max(Number(resizeYRange.min), newY));
+    }
+    updateResizeLabels();
+  });
+
+  resizeYRange.addEventListener('input', () => {
+    if(aspectLocked && origH){
+      const ratio = Number(resizeYRange.value) / origH;
+      const newX = Math.round(origW * ratio);
+      resizeXRange.value = Math.min(Number(resizeXRange.max), Math.max(Number(resizeXRange.min), newX));
+    }
+    updateResizeLabels();
+  });
+
+  // ---------- Go: real GIF resize pipeline ----------
+  resizeGoBtn.addEventListener('click', async () => {
+    if(!currentFile) return;
+    const targetW = Number(resizeXRange.value);
+    const targetH = Number(resizeYRange.value);
+
+    resizeGoBtn.disabled = true;
+    resizeBackBtn.disabled = true;
+    resizeStatusNote.textContent = 'GIF를 분석하는 중…';
+
+    try{
+      const { composed, gifW, gifH } = await getComposedFrames(currentFile);
+
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = targetW; outCanvas.height = targetH;
+      const outCtx = outCanvas.getContext('2d');
+
+      const outFrames = composed.map((cf, i) => {
+        outCtx.clearRect(0, 0, targetW, targetH);
+        outCtx.drawImage(cf.canvas, 0, 0, gifW, gifH, 0, 0, targetW, targetH);
+        resizeStatusNote.textContent = `프레임 리사이즈 중… (${i+1}/${composed.length})`;
+        const frameCanvas = document.createElement('canvas');
+        frameCanvas.width = targetW; frameCanvas.height = targetH;
+        frameCanvas.getContext('2d').drawImage(outCanvas, 0, 0);
+        return { canvas: frameCanvas, delay: cf.delay };
+      });
+
+      resizeStatusNote.textContent = 'GIF 인코딩 중… 0%';
+      const blob = await encodeFramesToGif(outFrames, targetW, targetH, 10, resizeStatusNote);
+
+      showResult({
+        blob, title: 'Resized GIF',
+        dims: `${targetW} × ${targetH}`,
+        filename: `Resized.${currentFile.name}`
+      });
+
+      resizeStatusNote.textContent = '완료! 왼쪽에서 결과를 확인하세요.';
+    } catch(err){
+      resizeStatusNote.textContent = '처리 중 오류가 발생했어요. 다른 GIF로 시도해 주세요.';
+    } finally {
+      resizeGoBtn.disabled = false;
+      resizeBackBtn.disabled = false;
+    }
+  });
+
+  // ============================================================
+  // Crop
+  // ============================================================
+  cropRatioGroup.addEventListener('click', (e) => {
+    const btn = e.target.closest('.opt-pill');
+    if(!btn) return;
+    cropRatioGroup.querySelectorAll('.opt-pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const val = btn.dataset.ratio;
+    if(val === 'custom'){
+      cropCustomRow.classList.add('show');
+      cropRatio = { w: parseFloat(cropCustomW.value)||1, h: parseFloat(cropCustomH.value)||1 };
+    } else {
+      cropCustomRow.classList.remove('show');
+      const [w,h] = val.split(':').map(Number);
+      cropRatio = { w, h };
+    }
+  });
+  [cropCustomW, cropCustomH].forEach(inp => inp.addEventListener('input', () => {
+    cropRatio = { w: parseFloat(cropCustomW.value)||1, h: parseFloat(cropCustomH.value)||1 };
+  }));
+
+  function setCropMode(mode){
+    cropMode = mode;
+    cropModePad.classList.toggle('active', mode === 'pad');
+    cropModeCover.classList.toggle('active', mode === 'cover');
+    cropBgRow.classList.toggle('show', mode === 'pad');
+  }
+  cropModePad.addEventListener('click', () => setCropMode('pad'));
+  cropModeCover.addEventListener('click', () => setCropMode('cover'));
+
+  cropBgColorPicker.addEventListener('input', () => {
+    cropBgColor = cropBgColorPicker.value;
+    cropBgColorText.value = cropBgColor.toUpperCase();
+  });
+  cropBgColorText.addEventListener('change', () => {
+    let v = cropBgColorText.value.trim();
+    if(!v.startsWith('#')) v = '#' + v;
+    if(/^#([0-9a-fA-F]{6})$/.test(v)){
+      cropBgColor = v; cropBgColorPicker.value = v; cropBgColorText.value = v.toUpperCase();
+    } else {
+      cropBgColorText.value = cropBgColor.toUpperCase();
+    }
+  });
+
+  cropGoBtn.addEventListener('click', async () => {
+    if(!currentFile) return;
+    cropGoBtn.disabled = true;
+    cropBackBtn.disabled = true;
+    cropStatusNote.textContent = 'GIF를 분석하는 중…';
+
+    try{
+      const { composed, gifW, gifH } = await getComposedFrames(currentFile);
+
+      const rw = cropRatio.w, rh = cropRatio.h;
+      const longAxis = Math.max(gifW, gifH);
+      let canvasW, canvasH;
+      if(rw >= rh){ canvasW = longAxis; canvasH = Math.round(longAxis * rh / rw); }
+      else { canvasH = longAxis; canvasW = Math.round(longAxis * rw / rh); }
+
+      const outFrames = composed.map((cf, i) => {
+        const frameCanvas = document.createElement('canvas');
+        frameCanvas.width = canvasW; frameCanvas.height = canvasH;
+        const ctx = frameCanvas.getContext('2d');
+
+        if(cropMode === 'pad'){
+          ctx.fillStyle = cropBgColor;
+          ctx.fillRect(0, 0, canvasW, canvasH);
+          const scale = Math.min(canvasW / gifW, canvasH / gifH);
+          const dw = gifW * scale, dh = gifH * scale;
+          ctx.drawImage(cf.canvas, (canvasW-dw)/2, (canvasH-dh)/2, dw, dh);
+        } else {
+          const scale = Math.max(canvasW / gifW, canvasH / gifH);
+          const dw = gifW * scale, dh = gifH * scale;
+          ctx.drawImage(cf.canvas, (canvasW-dw)/2, (canvasH-dh)/2, dw, dh);
+        }
+        cropStatusNote.textContent = `프레임 처리 중… (${i+1}/${composed.length})`;
+        return { canvas: frameCanvas, delay: cf.delay };
+      });
+
+      cropStatusNote.textContent = 'GIF 인코딩 중… 0%';
+      const blob = await encodeFramesToGif(outFrames, canvasW, canvasH, 10, cropStatusNote);
+
+      showResult({
+        blob, title: 'Cropped GIF',
+        dims: `${canvasW} × ${canvasH}`,
+        filename: `Cropped.${currentFile.name}`
+      });
+
+      cropStatusNote.textContent = '완료! 왼쪽에서 결과를 확인하세요.';
+    } catch(err){
+      cropStatusNote.textContent = '처리 중 오류가 발생했어요. 다른 GIF로 시도해 주세요.';
+    } finally {
+      cropGoBtn.disabled = false;
+      cropBackBtn.disabled = false;
+    }
+  });
+
+  // ============================================================
+  // Optimize
+  // ============================================================
+  function updateOptimizeGoState(){
+    const any = optLossless.checked || optShrink.checked || optDropFrames.checked || optDownscale.checked;
+    optimizeGoBtn.disabled = !any;
+    optimizeStatusNote.textContent = any
+      ? '선택한 방법을 적용해 용량을 줄여요.'
+      : '하나 이상 선택한 뒤 Go를 눌러주세요.';
+  }
+  optLossless.addEventListener('change', updateOptimizeGoState);
+  optShrink.addEventListener('change', updateOptimizeGoState);
+  optDropFrames.addEventListener('change', () => {
+    optDropSub.classList.toggle('show', optDropFrames.checked);
+    updateOptimizeGoState();
+  });
+  optDownscale.addEventListener('change', () => {
+    optDownscaleSub.classList.toggle('show', optDownscale.checked);
+    updateOptimizeGoState();
+  });
+
+  optimizeGoBtn.addEventListener('click', async () => {
+    if(!currentFile) return;
+    optimizeGoBtn.disabled = true;
+    optimizeBackBtn.disabled = true;
+    optimizeStatusNote.textContent = 'GIF를 분석하는 중…';
+
+    try{
+      let { composed, gifW, gifH } = await getComposedFrames(currentFile);
+      const beforeCount = composed.length;
+
+      // 1) lossless cleanup: merge exact-duplicate consecutive frames
+      if(optLossless.checked){
+        const deduped = [];
+        let prevKey = null;
+        composed.forEach((f) => {
+          const key = f.canvas.toDataURL('image/png');
+          if(prevKey !== null && key === prevKey){
+            deduped[deduped.length - 1].delay += f.delay;
+          } else {
+            deduped.push({ canvas: f.canvas, delay: f.delay });
+            prevKey = key;
+          }
+        });
+        composed = deduped;
+        optimizeStatusNote.textContent = `중복 프레임 정리 중… (${beforeCount} → ${composed.length})`;
+      }
+
+      // 2) frame removal
+      if(optDropFrames.checked){
+        const keepEvery = Number(optDropRate.value);
+        const kept = [];
+        for(let i = 0; i < composed.length; i += keepEvery){
+          let mergedDelay = 0;
+          for(let k = i; k < Math.min(i + keepEvery, composed.length); k++){
+            mergedDelay += composed[k].delay;
+          }
+          kept.push({ canvas: composed[i].canvas, delay: mergedDelay });
+        }
+        composed = kept;
+        optimizeStatusNote.textContent = `프레임 삭제 적용 중… (${composed.length}개 남음)`;
+      }
+
+      // 3) resolution downscale
+      let outW = gifW, outH = gifH;
+      if(optDownscale.checked){
+        const rate = Number(optDownscaleRate.value);
+        outW = Math.max(2, Math.round(gifW * rate));
+        outH = Math.max(2, Math.round(gifH * rate));
+      }
+
+      const outFrames = composed.map((cf, i) => {
+        let frameCanvas = cf.canvas;
+        if(outW !== gifW || outH !== gifH){
+          frameCanvas = document.createElement('canvas');
+          frameCanvas.width = outW; frameCanvas.height = outH;
+          frameCanvas.getContext('2d').drawImage(cf.canvas, 0, 0, gifW, gifH, 0, 0, outW, outH);
+        }
+        optimizeStatusNote.textContent = `프레임 처리 중… (${i+1}/${composed.length})`;
+        return { canvas: frameCanvas, delay: cf.delay };
+      });
+
+      // 4) quality: lossless keeps the finest palette sampling; explicit
+      // "사이즈 축소" is a more aggressive, intentionally lossy choice
+      let quality = 10;
+      if(optLossless.checked) quality = 1;
+      if(optShrink.checked) quality = 24;
+
+      optimizeStatusNote.textContent = 'GIF 인코딩 중… 0%';
+      const blob = await encodeFramesToGif(outFrames, outW, outH, quality, optimizeStatusNote);
+
+      const savedPct = currentFile.size > 0 ? Math.max(0, Math.round((1 - blob.size / currentFile.size) * 100)) : 0;
+
+      showResult({
+        blob, title: 'Optimized GIF',
+        dims: `${outW} × ${outH}`,
+        filename: `Optimized.${currentFile.name}`
+      });
+
+      optimizeStatusNote.textContent = savedPct > 0
+        ? `완료! 용량을 약 ${savedPct}% 줄였어요.`
+        : '완료! 왼쪽에서 결과를 확인하세요.';
+    } catch(err){
+      optimizeStatusNote.textContent = '처리 중 오류가 발생했어요. 다른 GIF로 시도해 주세요.';
+    } finally {
+      optimizeGoBtn.disabled = false;
+      optimizeBackBtn.disabled = false;
+      updateOptimizeGoState();
+    }
+  });
+
+  // ============================================================
+  // Format Convert
+  // ============================================================
+  convertFormatGroup.addEventListener('click', (e) => {
+    const btn = e.target.closest('.opt-pill');
+    if(!btn) return;
+    convertFormatGroup.querySelectorAll('.opt-pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    convertFormat = btn.dataset.format;
+    convertStatusNote.textContent = convertFormat === 'mp4'
+      ? 'MP4는 첫 로딩 시 변환 엔진을 내려받느라 시간이 조금 더 걸릴 수 있어요.'
+      : 'JPG는 GIF의 첫 프레임을 이미지로 저장해요.';
+  });
+
+  convertGoBtn.addEventListener('click', async () => {
+    if(!currentFile) return;
+    convertGoBtn.disabled = true;
+    convertBackBtn.disabled = true;
+
+    const baseName = currentFile.name.replace(/\.gif$/i, '');
+
+    try{
+      if(convertFormat === 'jpg'){
+        convertStatusNote.textContent = 'GIF를 분석하는 중…';
+        const { composed, gifW, gifH } = await getComposedFrames(currentFile);
+        const first = composed[0];
+
+        const canvas = document.createElement('canvas');
+        canvas.width = gifW; canvas.height = gifH;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, gifW, gifH);
+        ctx.drawImage(first.canvas, 0, 0);
+
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.92));
+
+        showResult({
+          blob, title: 'Converted Image (JPG)',
+          dims: `${gifW} × ${gifH}`,
+          filename: `${baseName}.jpg`
+        });
+        convertStatusNote.textContent = '완료! 왼쪽에서 결과를 확인하세요.';
+      } else {
+        const blob = await convertGifToMp4(currentFile, convertStatusNote);
+        showResult({
+          blob, title: 'Converted Video (MP4)',
+          filename: `${baseName}.mp4`
+        });
+        convertStatusNote.textContent = '완료! 왼쪽에서 결과를 확인하세요.';
+      }
+    } catch(err){
+      convertStatusNote.textContent = '변환 중 오류가 발생했어요. 다른 GIF로 시도해 주세요.';
+    } finally {
+      convertGoBtn.disabled = false;
+      convertBackBtn.disabled = false;
+    }
+  });
+
+  // ============================================================
+  // Rotate
+  // ============================================================
+  rotateDegGroup.addEventListener('click', (e) => {
+    const btn = e.target.closest('.opt-pill');
+    if(!btn) return;
+    rotateDegGroup.querySelectorAll('.opt-pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    rotateDeg = Number(btn.dataset.deg);
+  });
+  flipHBtn.addEventListener('click', () => {
+    flipH = !flipH;
+    flipHBtn.classList.toggle('active', flipH);
+  });
+  flipVBtn.addEventListener('click', () => {
+    flipV = !flipV;
+    flipVBtn.classList.toggle('active', flipV);
+  });
+
+  function transformFrame(sourceCanvas, w, h, deg, fh, fv){
+    const swapped = (deg === 90 || deg === 270);
+    const outCanvas = document.createElement('canvas');
+    outCanvas.width = swapped ? h : w;
+    outCanvas.height = swapped ? w : h;
+    const ctx = outCanvas.getContext('2d');
+
+    ctx.save();
+    ctx.translate(outCanvas.width / 2, outCanvas.height / 2);
+    ctx.rotate(deg * Math.PI / 180);
+    ctx.scale(fh ? -1 : 1, fv ? -1 : 1);
+    ctx.drawImage(sourceCanvas, -w / 2, -h / 2, w, h);
+    ctx.restore();
+
+    return outCanvas;
+  }
+
+  rotateGoBtn.addEventListener('click', async () => {
+    if(!currentFile) return;
+    rotateGoBtn.disabled = true;
+    rotateBackBtn.disabled = true;
+    rotateStatusNote.textContent = 'GIF를 분석하는 중…';
+
+    try{
+      const { composed, gifW, gifH } = await getComposedFrames(currentFile);
+      const swapped = (rotateDeg === 90 || rotateDeg === 270);
+      const outW = swapped ? gifH : gifW;
+      const outH = swapped ? gifW : gifH;
+
+      const outFrames = composed.map((cf, i) => {
+        const frameCanvas = transformFrame(cf.canvas, gifW, gifH, rotateDeg, flipH, flipV);
+        rotateStatusNote.textContent = `프레임 처리 중… (${i+1}/${composed.length})`;
+        return { canvas: frameCanvas, delay: cf.delay };
+      });
+
+      rotateStatusNote.textContent = 'GIF 인코딩 중… 0%';
+      const blob = await encodeFramesToGif(outFrames, outW, outH, 10, rotateStatusNote);
+
+      showResult({
+        blob, title: 'Rotated GIF',
+        dims: `${outW} × ${outH}`,
+        filename: `Rotated.${currentFile.name}`
+      });
+
+      rotateStatusNote.textContent = '완료! 왼쪽에서 결과를 확인하세요.';
+    } catch(err){
+      rotateStatusNote.textContent = '처리 중 오류가 발생했어요. 다른 GIF로 시도해 주세요.';
+    } finally {
+      rotateGoBtn.disabled = false;
+      rotateBackBtn.disabled = false;
+    }
+  });
+
+  // ============================================================
+  // Reverse
+  // ============================================================
+  reverseGoBtn.addEventListener('click', async () => {
+    if(!currentFile) return;
+    reverseGoBtn.disabled = true;
+    reverseBackBtn.disabled = true;
+    reverseStatusNote.textContent = 'GIF를 분석하는 중…';
+
+    try{
+      const { composed, gifW, gifH } = await getComposedFrames(currentFile);
+      const reversed = composed.slice().reverse();
+
+      reverseStatusNote.textContent = 'GIF 인코딩 중… 0%';
+      const blob = await encodeFramesToGif(reversed, gifW, gifH, 10, reverseStatusNote);
+
+      showResult({
+        blob, title: 'Reversed GIF',
+        dims: `${gifW} × ${gifH}`,
+        filename: `Reversed.${currentFile.name}`
+      });
+
+      reverseStatusNote.textContent = '완료! 왼쪽에서 결과를 확인하세요.';
+    } catch(err){
+      reverseStatusNote.textContent = '처리 중 오류가 발생했어요. 다른 GIF로 시도해 주세요.';
+    } finally {
+      reverseGoBtn.disabled = false;
+      reverseBackBtn.disabled = false;
+    }
+  });
+
+  // ============================================================
+  // Speed
+  // ============================================================
+  speedRange.addEventListener('input', () => {
+    const multiplier = Number(speedRange.value) / 100;
+    speedVal.textContent = multiplier.toFixed(2) + 'x';
+  });
+
+  speedGoBtn.addEventListener('click', async () => {
+    if(!currentFile) return;
+    speedGoBtn.disabled = true;
+    speedBackBtn.disabled = true;
+    speedStatusNote.textContent = 'GIF를 분석하는 중…';
+
+    try{
+      const multiplier = Number(speedRange.value) / 100;
+      const { composed, gifW, gifH } = await getComposedFrames(currentFile);
+      const adjusted = composed.map(f => ({
+        canvas: f.canvas,
+        delay: Math.max(20, Math.round(f.delay / multiplier))
+      }));
+
+      speedStatusNote.textContent = 'GIF 인코딩 중… 0%';
+      const blob = await encodeFramesToGif(adjusted, gifW, gifH, 10, speedStatusNote);
+
+      showResult({
+        blob, title: 'Speed-adjusted GIF',
+        dims: `${gifW} × ${gifH}`,
+        filename: `Speed.${currentFile.name}`
+      });
+
+      speedStatusNote.textContent = `완료! ${multiplier.toFixed(2)}x 속도로 저장했어요.`;
+    } catch(err){
+      speedStatusNote.textContent = '처리 중 오류가 발생했어요. 다른 GIF로 시도해 주세요.';
+    } finally {
+      speedGoBtn.disabled = false;
+      speedBackBtn.disabled = false;
+    }
+  });
+
+  // ============================================================
+  // Cut
+  // ============================================================
+  function fmtSeconds(ms){
+    return (ms / 1000).toFixed(1) + 's';
+  }
+
+  function updateCutLabels(){
+    let start = Number(cutStartRange.value);
+    let end = Number(cutEndRange.value);
+    if(start > end){
+      // keep the two handles from crossing
+      if(document.activeElement === cutStartRange){ end = start; cutEndRange.value = end; }
+      else { start = end; cutStartRange.value = start; }
+    }
+    const startMs = start === 0 ? 0 : cutCumulativeMs[start - 1] || 0;
+    const endMs = cutCumulativeMs[end] || 0;
+    cutStartVal.textContent = `${start} (${fmtSeconds(startMs)})`;
+    cutEndVal.textContent = `${end} (${fmtSeconds(endMs)})`;
+  }
+
+  cutStartRange.addEventListener('input', updateCutLabels);
+  cutEndRange.addEventListener('input', updateCutLabels);
+
+  cutGoBtn.addEventListener('click', async () => {
+    if(!currentFile) return;
+    cutGoBtn.disabled = true;
+    cutBackBtn.disabled = true;
+    cutStatusNote.textContent = 'GIF를 분석하는 중…';
+
+    try{
+      const start = Math.min(Number(cutStartRange.value), Number(cutEndRange.value));
+      const end = Math.max(Number(cutStartRange.value), Number(cutEndRange.value));
+      const { composed, gifW, gifH } = await getComposedFrames(currentFile);
+      const trimmed = composed.slice(start, end + 1);
+
+      cutStatusNote.textContent = 'GIF 인코딩 중… 0%';
+      const blob = await encodeFramesToGif(trimmed, gifW, gifH, 10, cutStatusNote);
+
+      showResult({
+        blob, title: 'Cut GIF',
+        dims: `${gifW} × ${gifH}`,
+        filename: `Cut.${currentFile.name}`
+      });
+
+      cutStatusNote.textContent = `완료! ${trimmed.length}개 프레임만 남겼어요.`;
+    } catch(err){
+      cutStatusNote.textContent = '처리 중 오류가 발생했어요. 다른 GIF로 시도해 주세요.';
+    } finally {
+      cutGoBtn.disabled = false;
+      cutBackBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

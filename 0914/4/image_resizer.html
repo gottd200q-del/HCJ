@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Image Resizer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --ink:#151a23;
+    --ink-soft:#5b6472;
+    --line:#e4e7ec;
+    --surface:#ffffff;
+    --canvas:#f6f7f9;
+    --navy:#101623;
+    --accent:#00c896;
+    --accent-dark:#049c76;
+    --accent-soft:#e3faf3;
+    --warn:#e2574c;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:'Inter', sans-serif;
+    background:var(--canvas);
+    color:var(--ink);
+    min-height:100vh;
+  }
+
+  .topbar{
+    background:var(--surface);
+    border-bottom:1px solid var(--line);
+    padding:16px 24px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    color: var(--accent-dark);
+    letter-spacing:0.3px;
+  }
+  .brand .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); }
+  .app-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:17px;
+    color:var(--ink);
+  }
+
+  .container{
+    max-width:760px;
+    margin:0 auto;
+    padding:36px 24px 80px;
+  }
+
+  .lede{
+    font-size:14px;
+    color:var(--ink-soft);
+    margin:0 0 24px;
+    line-height:1.6;
+  }
+
+  .panel{
+    background:var(--surface);
+    border-radius:18px;
+    border:1px solid var(--line);
+    padding:26px;
+    box-shadow:0 14px 34px rgba(16,22,35,0.06);
+  }
+  .panel + .panel{ margin-top:20px; }
+
+  .dropzone{
+    border:1.5px dashed #c7cdd7;
+    border-radius:14px;
+    padding:36px 20px;
+    text-align:center;
+    background:#fbfcfd;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    cursor:pointer;
+  }
+  .dropzone.drag{
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .dropzone svg{ width:36px; height:36px; margin-bottom:12px; }
+  .dz-title{ font-family:'Space Grotesk', sans-serif; font-size:15px; font-weight:600; margin-bottom:4px; }
+  .dz-sub{ font-size:12.5px; color:var(--ink-soft); margin-bottom:16px; }
+
+  .select-btn{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--ink); color:#fff; border:none;
+    padding:10px 20px; border-radius:999px;
+    font-size:13px; font-weight:600; font-family:'Inter', sans-serif;
+    cursor:pointer; transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .select-btn:hover{ background:#000; transform:translateY(-1px); }
+  input[type=file]{ display:none; }
+
+  .section-label{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px; font-weight:600;
+    margin-bottom:12px;
+    color:var(--ink);
+  }
+
+  .pill-group{
+    display:flex; flex-wrap:wrap; gap:8px;
+  }
+  .pill{
+    border:1.5px solid var(--line);
+    background:#fff;
+    color:var(--ink-soft);
+    font-size:12.5px; font-weight:600;
+    padding:8px 15px;
+    border-radius:999px;
+    cursor:pointer;
+    transition: all 0.15s ease;
+    font-family:'Inter', sans-serif;
+  }
+  .pill:hover{ border-color:#b7bdc8; }
+  .pill.active{
+    background:var(--ink);
+    border-color:var(--ink);
+    color:#fff;
+  }
+
+  .custom-ratio{
+    display:none;
+    align-items:center;
+    gap:8px;
+    margin-top:12px;
+  }
+  .custom-ratio.show{ display:flex; }
+  .custom-ratio input{
+    width:64px;
+    padding:8px 10px;
+    border-radius:8px;
+    border:1.5px solid var(--line);
+    font-size:13px;
+    font-family:'Inter', sans-serif;
+    text-align:center;
+  }
+  .custom-ratio span{ color:var(--ink-soft); font-size:13px; }
+
+  .mode-row{
+    display:flex;
+    gap:10px;
+  }
+  .mode-card{
+    flex:1;
+    border:1.5px solid var(--line);
+    border-radius:12px;
+    padding:14px 16px;
+    cursor:pointer;
+    transition: all 0.15s ease;
+  }
+  .mode-card:hover{ border-color:#b7bdc8; }
+  .mode-card.active{
+    border-color:var(--accent);
+    background:var(--accent-soft);
+  }
+  .mode-card .mtitle{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13.5px; font-weight:600;
+    margin-bottom:3px;
+  }
+  .mode-card .mdesc{ font-size:11.5px; color:var(--ink-soft); line-height:1.5; }
+
+  .bgcolor-row{
+    display:none;
+    align-items:center;
+    gap:12px;
+    margin-top:16px;
+    padding-top:16px;
+    border-top:1px dashed var(--line);
+  }
+  .bgcolor-row.show{ display:flex; }
+  .bgcolor-row input[type=color]{
+    width:38px; height:38px;
+    border:1.5px solid var(--line);
+    border-radius:8px;
+    padding:2px;
+    cursor:pointer;
+    background:none;
+  }
+  .bgcolor-row input[type=text]{
+    width:100px;
+    padding:8px 10px;
+    border-radius:8px;
+    border:1.5px solid var(--line);
+    font-size:13px;
+    font-family:'Inter', sans-serif;
+    text-transform:uppercase;
+  }
+  .bgcolor-row label{ font-size:12.5px; color:var(--ink-soft); }
+
+  .row-block + .row-block{ margin-top:22px; }
+
+  .start-btn{
+    width:100%;
+    margin-top:24px;
+    background: var(--accent);
+    color:#06231b;
+    border:none;
+    padding:14px;
+    border-radius:12px;
+    font-size:14px;
+    font-weight:700;
+    font-family:'Inter', sans-serif;
+    cursor:pointer;
+    transition: transform 0.15s ease, opacity 0.2s ease;
+  }
+  .start-btn:hover{ transform:translateY(-1px); }
+  .start-btn:disabled{ opacity:0.45; cursor:not-allowed; transform:none; }
+
+  .queue-section{ display:none; }
+  .queue-section.show{ display:block; }
+
+  .queue-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .queue-head h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:15px; font-weight:600; margin:0;
+  }
+  .queue-summary{ font-size:12px; color:var(--ink-soft); }
+
+  .file-row{
+    display:flex; align-items:center; gap:14px;
+    padding:14px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .file-row:last-child{ border-bottom:none; }
+
+  .thumb{
+    width:52px; height:52px;
+    border-radius:8px;
+    object-fit:cover;
+    flex-shrink:0;
+    background:#eef0f3;
+    border:1px solid var(--line);
+  }
+
+  .file-body{ flex:1; min-width:0; }
+  .file-top{ display:flex; justify-content:space-between; gap:10px; align-items:baseline; }
+  .file-name{
+    font-size:13px; font-weight:600;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .file-dims{ font-size:11px; color:var(--ink-soft); flex-shrink:0; white-space:nowrap; }
+
+  .progress-track{
+    margin-top:8px; height:6px; border-radius:999px;
+    background:#eef0f3; overflow:hidden;
+  }
+  .progress-fill{
+    height:100%; width:0%;
+    background: linear-gradient(90deg, var(--accent-dark), var(--accent));
+    border-radius:999px;
+    transition: width 0.2s ease;
+  }
+  .file-status{ margin-top:5px; font-size:11px; color:var(--ink-soft); }
+  .file-status.ok{ color:var(--accent-dark); }
+
+  .row-actions{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0; }
+  .download-btn{
+    background: var(--accent); color:#06231b; border:none;
+    padding:7px 15px; border-radius:999px;
+    font-size:11.5px; font-weight:700; font-family:'Inter', sans-serif;
+    cursor:pointer; opacity:0.4; pointer-events:none;
+    transition: opacity 0.2s ease, transform 0.15s ease;
+    white-space:nowrap;
+  }
+  .download-btn.ready{ opacity:1; pointer-events:auto; }
+  .download-btn.ready:hover{ transform:translateY(-1px); }
+  .remove-btn{
+    background:none; border:none; color:#b0b7c2;
+    font-size:15px; cursor:pointer; line-height:1; padding:2px;
+  }
+  .remove-btn:hover{ color:var(--warn); }
+
+  .zip-btn{
+    width:100%;
+    margin-top:18px;
+    background: var(--ink);
+    color:#fff;
+    border:none;
+    padding:14px;
+    border-radius:12px;
+    font-size:14px;
+    font-weight:700;
+    font-family:'Inter', sans-serif;
+    cursor:pointer;
+    opacity:0.4;
+    pointer-events:none;
+    transition: opacity 0.2s ease, transform 0.15s ease, background 0.15s ease;
+  }
+  .zip-btn.ready{ opacity:1; pointer-events:auto; }
+  .zip-btn.ready:hover{ background:#000; transform:translateY(-1px); }
+
+  .footnote{
+    margin-top:16px; font-size:11.5px; color:#9aa2ae; line-height:1.6;
+  }
+
+  @media (max-width:480px){
+    .panel{ padding:18px; }
+    .mode-row{ flex-direction:column; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span>NANALAB</div>
+    <div class="app-title">Smart Image Resizer</div>
+  </div>
+
+  <div class="container">
+    <p class="lede">이미지를 업로드하면 원하는 캔버스 비율에 맞춰 여백을 채우거나 잘라내어 한 번에 리사이즈합니다. 모든 처리는 이 브라우저 안에서 이루어집니다.</p>
+
+    <div class="panel">
+      <div class="dropzone" id="dropzone">
+        <svg viewBox="0 0 48 48" fill="none">
+          <path d="M24 6v24M24 6l-8 8M24 6l8 8" stroke="#049c76" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 32v4a4 4 0 0 0 4 4h24a4 4 0 0 0 4-4v-4" stroke="#151a23" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="dz-title">이미지를 끌어다 놓으세요</div>
+        <div class="dz-sub">또는 아래 버튼으로 여러 장을 한 번에 선택하세요</div>
+        <button class="select-btn" id="selectBtn" type="button">파일 선택</button>
+        <input type="file" id="fileInput" multiple accept="image/*">
+      </div>
+    </div>
+
+    <div class="panel" id="settingsPanel" style="display:none;">
+
+      <div class="row-block">
+        <div class="section-label">캔버스 비율</div>
+        <div class="pill-group" id="ratioGroup">
+          <button class="pill active" data-ratio="1:1">1:1</button>
+          <button class="pill" data-ratio="3:4">3:4</button>
+          <button class="pill" data-ratio="4:3">4:3</button>
+          <button class="pill" data-ratio="9:16">9:16</button>
+          <button class="pill" data-ratio="16:9">16:9</button>
+          <button class="pill" data-ratio="custom">커스텀</button>
+        </div>
+        <div class="custom-ratio" id="customRatioRow">
+          <input type="number" id="customW" min="1" value="1" inputmode="numeric">
+          <span>:</span>
+          <input type="number" id="customH" min="1" value="1" inputmode="numeric">
+        </div>
+      </div>
+
+      <div class="row-block">
+        <div class="section-label">리사이즈 방식</div>
+        <div class="mode-row">
+          <div class="mode-card active" data-mode="padding" id="modePadding">
+            <div class="mtitle">Padding</div>
+            <div class="mdesc">사진 전체를 유지하고, 비율이 안 맞는 부분은 여백으로 채워요</div>
+          </div>
+          <div class="mode-card" data-mode="crop" id="modeCrop">
+            <div class="mtitle">Crop</div>
+            <div class="mdesc">비율에 맞게 사진의 일부를 잘라내요</div>
+          </div>
+        </div>
+        <div class="bgcolor-row show" id="bgColorRow">
+          <label>여백 색상</label>
+          <input type="color" id="bgColorPicker" value="#ffffff">
+          <input type="text" id="bgColorText" value="#FFFFFF" maxlength="7">
+        </div>
+      </div>
+
+      <button class="start-btn" id="startBtn">작업 시작</button>
+    </div>
+
+    <div class="panel queue-section" id="queueSection">
+      <div class="queue-head">
+        <h2>작업 목록</h2>
+        <div class="queue-summary" id="queueSummary"></div>
+      </div>
+      <div id="fileList"></div>
+      <button class="zip-btn" id="zipBtn">일괄 다운로드 (ZIP)</button>
+      <div class="footnote">완료된 파일은 개별적으로도 다운로드할 수 있어요. 파일명은 resized_원본파일명 형태로 저장됩니다.</div>
+    </div>
+
+  </div>
+
+<script>
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const selectBtn = document.getElementById('selectBtn');
+  const settingsPanel = document.getElementById('settingsPanel');
+  const ratioGroup = document.getElementById('ratioGroup');
+  const customRatioRow = document.getElementById('customRatioRow');
+  const customW = document.getElementById('customW');
+  const customH = document.getElementById('customH');
+  const modePadding = document.getElementById('modePadding');
+  const modeCrop = document.getElementById('modeCrop');
+  const bgColorRow = document.getElementById('bgColorRow');
+  const bgColorPicker = document.getElementById('bgColorPicker');
+  const bgColorText = document.getElementById('bgColorText');
+  const startBtn = document.getElementById('startBtn');
+  const queueSection = document.getElementById('queueSection');
+  const fileList = document.getElementById('fileList');
+  const queueSummary = document.getElementById('queueSummary');
+  const zipBtn = document.getElementById('zipBtn');
+
+  let queue = [];        // { id, file, img, ext, result:{blob,url}, done:false }
+  let currentRatio = { w:1, h:1 };
+  let currentMode = 'padding';
+  let bgColor = '#ffffff';
+  let fileCounter = 0;
+
+  // ---- upload wiring ----
+  selectBtn.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('click', (e) => { if(e.target === selectBtn) return; fileInput.click(); });
+  fileInput.addEventListener('change', () => { handleFiles(fileInput.files); fileInput.value=''; });
+
+  ['dragenter','dragover'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('drag'); });
+  });
+  ['dragleave','drop'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if(evt === 'dragleave' && e.target !== dropzone) return;
+      dropzone.classList.remove('drag');
+    });
+  });
+  dropzone.addEventListener('drop', (e) => { if(e.dataTransfer && e.dataTransfer.files) handleFiles(e.dataTransfer.files); });
+
+  function handleFiles(fileListArg){
+    const files = Array.from(fileListArg).filter(f => f.type.startsWith('image/'));
+    if(!files.length) return;
+    settingsPanel.style.display = 'block';
+    queueSection.classList.add('show');
+    files.forEach(addFileRow);
+  }
+
+  // ---- ratio selection ----
+  ratioGroup.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pill');
+    if(!btn) return;
+    ratioGroup.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const val = btn.dataset.ratio;
+    if(val === 'custom'){
+      customRatioRow.classList.add('show');
+      currentRatio = { w: parseFloat(customW.value)||1, h: parseFloat(customH.value)||1 };
+    } else {
+      customRatioRow.classList.remove('show');
+      const [w,h] = val.split(':').map(Number);
+      currentRatio = { w, h };
+    }
+  });
+  [customW, customH].forEach(inp => inp.addEventListener('input', () => {
+    currentRatio = { w: parseFloat(customW.value)||1, h: parseFloat(customH.value)||1 };
+  }));
+
+  // ---- mode selection ----
+  function selectMode(mode){
+    currentMode = mode;
+    modePadding.classList.toggle('active', mode==='padding');
+    modeCrop.classList.toggle('active', mode==='crop');
+    bgColorRow.classList.toggle('show', mode==='padding');
+  }
+  modePadding.addEventListener('click', () => selectMode('padding'));
+  modeCrop.addEventListener('click', () => selectMode('crop'));
+
+  bgColorPicker.addEventListener('input', () => {
+    bgColor = bgColorPicker.value;
+    bgColorText.value = bgColor.toUpperCase();
+  });
+  bgColorText.addEventListener('change', () => {
+    let v = bgColorText.value.trim();
+    if(!v.startsWith('#')) v = '#' + v;
+    if(/^#([0-9a-fA-F]{6})$/.test(v)){
+      bgColor = v;
+      bgColorPicker.value = v;
+      bgColorText.value = v.toUpperCase();
+    } else {
+      bgColorText.value = bgColor.toUpperCase();
+    }
+  });
+
+  // ---- file rows ----
+  function fmtSize(bytes){
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/1024/1024).toFixed(2) + ' MB';
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function addFileRow(file){
+    const id = 'img' + (++fileCounter);
+    const objUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.src = objUrl;
+
+    const entry = { id, file, img, done:false, result:null };
+    queue.push(entry);
+    updateSummary();
+
+    const row = document.createElement('div');
+    row.className = 'file-row';
+    row.id = id;
+    row.innerHTML = `
+      <img class="thumb" src="${objUrl}" alt="">
+      <div class="file-body">
+        <div class="file-top">
+          <div class="file-name">${escapeHtml(file.name)}</div>
+          <div class="file-dims">${fmtSize(file.size)}</div>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="${id}-fill"></div></div>
+        <div class="file-status" id="${id}-status">대기 중</div>
+      </div>
+      <div class="row-actions">
+        <button class="download-btn" id="${id}-dl">다운로드</button>
+        <button class="remove-btn" id="${id}-remove" title="목록에서 제거">✕</button>
+      </div>
+    `;
+    fileList.appendChild(row);
+
+    document.getElementById(`${id}-remove`).addEventListener('click', () => {
+      row.remove();
+      queue = queue.filter(q => q.id !== id);
+      updateSummary();
+      updateZipButton();
+    });
+  }
+
+  function updateSummary(){
+    const total = queue.length;
+    const done = queue.filter(q => q.done).length;
+    queueSummary.textContent = total ? `${done} / ${total} 완료` : '';
+  }
+
+  function setProgress(id, pct){
+    const el = document.getElementById(`${id}-fill`);
+    if(el) el.style.width = Math.min(100, Math.max(0,pct)) + '%';
+  }
+  function setStatus(id, text, kind){
+    const el = document.getElementById(`${id}-status`);
+    if(!el) return;
+    el.textContent = text;
+    el.className = 'file-status' + (kind ? ' '+kind : '');
+  }
+
+  function updateZipButton(){
+    const total = queue.length;
+    const done = queue.filter(q => q.done).length;
+    if(total > 0 && done === total){
+      zipBtn.classList.add('ready');
+    } else {
+      zipBtn.classList.remove('ready');
+    }
+  }
+
+  // ---- core resize logic ----
+  function waitForImage(img){
+    if(img.complete && img.naturalWidth) return Promise.resolve();
+    return new Promise(res => { img.onload = () => res(); img.onerror = () => res(); });
+  }
+
+  async function processEntry(entry){
+    setStatus(entry.id, '처리 중…');
+    let progress = 6;
+    setProgress(entry.id, progress);
+    const ticker = setInterval(() => {
+      const cap = 90;
+      if(progress < cap){ progress += Math.max(0.6, (cap-progress)*0.1); setProgress(entry.id, progress); }
+    }, 90);
+
+    await waitForImage(entry.img);
+    const img = entry.img;
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+
+    const rw = currentRatio.w, rh = currentRatio.h;
+    let canvasW, canvasH;
+    const longAxisBase = Math.max(iw, ih);
+    if(rw >= rh){
+      canvasW = longAxisBase;
+      canvasH = Math.round(longAxisBase * rh / rw);
+    } else {
+      canvasH = longAxisBase;
+      canvasW = Math.round(longAxisBase * rw / rh);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasW;
+    canvas.height = canvasH;
+    const ctx = canvas.getContext('2d');
+
+    if(currentMode === 'padding'){
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, canvasW, canvasH);
+      const scale = Math.min(canvasW / iw, canvasH / ih);
+      const dw = iw * scale, dh = ih * scale;
+      const dx = (canvasW - dw) / 2, dy = (canvasH - dh) / 2;
+      ctx.drawImage(img, dx, dy, dw, dh);
+    } else {
+      const scale = Math.max(canvasW / iw, canvasH / ih);
+      const dw = iw * scale, dh = ih * scale;
+      const dx = (canvasW - dw) / 2, dy = (canvasH - dh) / 2;
+      ctx.drawImage(img, dx, dy, dw, dh);
+    }
+
+    const mime = /image\/(png|webp)/.test(entry.file.type) ? entry.file.type : 'image/jpeg';
+    const blob = await new Promise(res => canvas.toBlob(res, mime, 0.92));
+
+    clearInterval(ticker);
+    setProgress(entry.id, 100);
+
+    const url = URL.createObjectURL(blob);
+    const ext = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
+    const baseName = entry.file.name.replace(/\.[^.]+$/, '');
+    const outName = `resized_${baseName}.${ext}`;
+
+    entry.result = { blob, url, outName };
+    entry.done = true;
+
+    setStatus(entry.id, `완료 · ${canvasW}×${canvasH}`, 'ok');
+    const dlBtn = document.getElementById(`${entry.id}-dl`);
+    dlBtn.classList.add('ready');
+    dlBtn.onclick = () => {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = outName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    };
+
+    updateSummary();
+    updateZipButton();
+  }
+
+  startBtn.addEventListener('click', async () => {
+    if(!queue.length) return;
+    startBtn.disabled = true;
+    const pending = queue.filter(q => !q.done);
+    await Promise.all(pending.map(processEntry));
+    startBtn.disabled = false;
+  });
+
+  zipBtn.addEventListener('click', async () => {
+    if(!zipBtn.classList.contains('ready')) return;
+    const zip = new JSZip();
+    queue.forEach(entry => {
+      if(entry.result) zip.file(entry.result.outName, entry.result.blob);
+    });
+    const zipBlob = await zip.generateAsync({ type:'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'resized_images.zip';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+</script>
+</body>
+</html>
