@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>경주 1박2일 팀 MT 일정</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+JP:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#241c17;
+    --paper:#f6efe1;
+    --paper-alt:#eee2c9;
+    --teal:#1f4a45;
+    --teal-deep:#153531;
+    --gold:#c8932e;
+    --wine:#7a3040;
+    --line:rgba(36,28,23,0.14);
+    --max:760px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Noto Sans KR", sans-serif;
+    line-height:1.9;
+    -webkit-font-smoothing:antialiased;
+  }
+  body[data-lang="ja"]{ font-family:"Noto Sans JP", sans-serif; }
+  h1,h2,h3{ font-family:"Noto Serif KR", serif; font-weight:700; }
+  body[data-lang="ja"] h1, body[data-lang="ja"] h2, body[data-lang="ja"] h3{ font-family:"Noto Serif JP", serif; }
+
+  /* ---------- LANG TOGGLE ---------- */
+  .langbar{
+    position:sticky; top:0; z-index:20;
+    background:var(--teal-deep);
+    padding:10px 24px;
+    display:flex; justify-content:center; gap:8px;
+  }
+  .langbar button{
+    font-family:"Noto Sans KR","Noto Sans JP", sans-serif;
+    font-size:13px;
+    font-weight:700;
+    color:#d9cdb0;
+    background:transparent;
+    border:1px solid rgba(217,205,176,0.35);
+    border-radius:999px;
+    padding:6px 18px;
+    cursor:pointer;
+    transition:background 0.2s ease, color 0.2s ease;
+  }
+  .langbar button.active{
+    background:var(--gold);
+    border-color:var(--gold);
+    color:var(--teal-deep);
+  }
+  .langbar button:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    background:linear-gradient(180deg, var(--teal-deep), var(--teal));
+    color:var(--paper);
+    padding:72px 24px 64px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::after{
+    content:"";
+    position:absolute; inset:0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(246,239,225,0.05) 0 1px, transparent 1px 64px),
+      repeating-linear-gradient(90deg, rgba(246,239,225,0.05) 0 1px, transparent 1px 64px);
+    pointer-events:none;
+  }
+  .hero-inner{ max-width:var(--max); margin:0 auto; position:relative; }
+  .hero-eyebrow{
+    font-size:13.5px; letter-spacing:0.12em; color:var(--gold);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-size:clamp(30px, 6vw, 46px);
+    line-height:1.4;
+    margin-bottom:18px;
+  }
+  .hero p{
+    font-size:15.5px; max-width:46ch; color:#d9d2c1;
+  }
+  .route{
+    margin-top:36px;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    font-size:13.5px; color:#e8e0cf;
+  }
+  .route .node{
+    background:rgba(246,239,225,0.1);
+    border:1px solid rgba(246,239,225,0.28);
+    border-radius:999px;
+    padding:6px 14px;
+  }
+  .route .arrow{ color:var(--gold); }
+
+  /* ---------- INTRO ---------- */
+  .intro{ max-width:var(--max); margin:0 auto; padding:44px 24px 8px; }
+  .intro p{ max-width:56ch; color:#4a423a; font-size:15px; }
+
+  /* ---------- DAY SECTIONS ---------- */
+  .day{ padding:52px 24px; border-top:1px solid var(--line); }
+  .day:nth-of-type(even){ background:var(--paper-alt); }
+  .day-inner{ max-width:var(--max); margin:0 auto; }
+
+  .day-head{ display:flex; align-items:center; gap:18px; margin-bottom:34px; }
+  .badge{
+    flex:none;
+    width:58px; height:58px;
+    border-radius:50%;
+    border:2px solid var(--wine);
+    color:var(--wine);
+    display:flex; align-items:center; justify-content:center;
+    font-family:"Noto Serif KR", serif;
+    font-weight:700; font-size:15px;
+    transform:rotate(-3deg);
+  }
+  body[data-lang="ja"] .badge{ font-family:"Noto Serif JP", serif; }
+  .day-head h2{ font-size:22px; color:var(--teal-deep); }
+  .day-head .sub{ display:block; font-family:"Noto Sans KR",sans-serif; font-weight:500; font-size:12.5px; color:var(--gold); letter-spacing:0.04em; margin-top:4px; }
+  body[data-lang="ja"] .day-head .sub{ font-family:"Noto Sans JP",sans-serif; }
+
+  .stops{ list-style:none; position:relative; padding-left:26px; }
+  .stops::before{ content:""; position:absolute; left:5px; top:6px; bottom:6px; width:1px; background:var(--line); }
+  .stop{ position:relative; padding:0 0 28px 20px; }
+  .stop:last-child{ padding-bottom:0; }
+  .stop::before{
+    content:"";
+    position:absolute; left:-31px; top:6px;
+    width:9px; height:9px; border-radius:50%;
+    background:var(--wine);
+    border:2px solid var(--paper);
+    box-shadow:0 0 0 1px var(--wine);
+  }
+  .day:nth-of-type(even) .stop::before{ border-color:var(--paper-alt); }
+  .stop-time{ font-size:12.5px; color:var(--gold); font-weight:700; letter-spacing:0.03em; margin-bottom:4px; }
+  .stop-title{ font-size:16.5px; font-weight:700; margin-bottom:4px; color:var(--ink); }
+  .stop-blurb{ font-size:14px; color:#5a5148; max-width:52ch; }
+
+  /* ---------- TIPS ---------- */
+  .tips{ max-width:var(--max); margin:0 auto; padding:56px 24px 100px; }
+  .tips h2{ font-size:21px; color:var(--teal-deep); margin-bottom:26px; }
+  .tip-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px 26px; }
+  .tip{ border-left:2px solid var(--gold); padding-left:16px; }
+  .tip h3{ font-size:14.5px; font-weight:700; margin-bottom:8px; color:var(--wine); }
+  .tip p{ font-size:13.5px; color:#5a5148; }
+
+  /* ---------- QR ---------- */
+  .qr-section{
+    max-width:var(--max); margin:0 auto;
+    padding:0 24px 100px;
+    display:flex; justify-content:center;
+  }
+  .qr-card{
+    background:#fffdf8;
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:32px 36px;
+    text-align:center;
+    max-width:280px;
+    text-decoration:none;
+    display:block;
+  }
+  .qr-card img{
+    width:170px; height:170px;
+    display:block;
+    margin:0 auto 18px;
+  }
+  .qr-card h3{
+    font-family:"Noto Serif KR", serif;
+    font-size:14px; color:var(--teal-deep); margin-bottom:6px;
+    letter-spacing:0.02em;
+  }
+  body[data-lang="ja"] .qr-card h3{ font-family:"Noto Serif JP", serif; }
+  .qr-card p{
+    font-size:12px; color:#8b8073;
+  }
+
+  @media (max-width:600px){
+    .hero{ padding:56px 20px 48px; }
+    .day{ padding:40px 20px; }
+    .tip-grid{ grid-template-columns:1fr; }
+    .badge{ width:50px; height:50px; font-size:12px; }
+  }
+
+  footer{ text-align:center; padding:0 24px 52px; font-size:12px; color:#8b8073; }
+</style>
+</head>
+<body data-lang="ko">
+
+<div class="langbar">
+  <button id="btn-ko" class="active" onclick="setLang('ko')">한국어</button>
+  <button id="btn-ja" onclick="setLang('ja')">日本語</button>
+</div>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow" data-ko="TEAM MT GUIDE" data-ja="TEAM MT GUIDE">TEAM MT GUIDE</div>
+    <h1 data-ko="경주 1박2일&lt;br&gt;팀 MT 일정" data-ja="慶州1泊2日&lt;br&gt;チームMT日程" data-html="true">경주 1박2일<br>팀 MT 일정</h1>
+    <p data-ko="경성대학교에서 출발해 경주까지 이동하는 교통편부터 볼거리, 먹거리, 숙박까지 한 번에 정리했습니다." data-ja="慶星大学から慶州までの交通手段はもちろん、観光・グルメ・宿泊まで一度にまとめました。">경성대학교에서 출발해 경주까지 이동하는 교통편부터 볼거리, 먹거리, 숙박까지 한 번에 정리했습니다.</p>
+    <div class="route">
+      <span class="node" data-ko="경성대·부경대역" data-ja="慶星大・釜慶大駅">경성대·부경대역</span>
+      <span class="arrow">→</span>
+      <span class="node" data-ko="노포역 (지하철 약 46분)" data-ja="老圃駅(地下鉄 約46分)">노포역 (지하철 약 46분)</span>
+      <span class="arrow">→</span>
+      <span class="node" data-ko="경주시외버스터미널 (시외버스 약 50분)" data-ja="慶州市外バスターミナル(バス 約50分)">경주시외버스터미널 (시외버스 약 50분)</span>
+    </div>
+  </div>
+</section>
+
+<div class="intro">
+  <p data-ko="편도 이동시간은 약 1시간 40분. 왕복 시외버스는 미리 예매해두면 주말 매진 걱정을 덜 수 있어요." data-ja="片道の移動時間は約1時間40分。往復の市外バスは事前予約しておくと週末の売り切れを避けられます。">편도 이동시간은 약 1시간 40분. 왕복 시외버스는 미리 예매해두면 주말 매진 걱정을 덜 수 있어요.</p>
+</div>
+
+<section class="day" id="day1">
+  <div class="day-inner">
+    <div class="day-head">
+      <div class="badge">1</div>
+      <h2 data-ko="1일차" data-ja="1日目">1일차<span class="sub" data-ko="이동 · 첨성대 · 대릉원" data-ja="移動・瞻星台・大陵苑">이동 · 첨성대 · 대릉원</span></h2>
+    </div>
+    <ul class="stops">
+      <li class="stop">
+        <div class="stop-time">09:00</div>
+        <div class="stop-title" data-ko="경성대 출발 → 지하철로 노포역 이동" data-ja="慶星大出発 → 地下鉄で老圃駅へ移動">경성대 출발 → 지하철로 노포역 이동</div>
+        <div class="stop-blurb" data-ko="2호선 탑승 후 서면역에서 1호선 환승, 노포역 하차 (총 약 46분 소요)" data-ja="2号線に乗車後、ソミョン駅で1号線に乗り換え、老圃駅で下車(合計約46分)">2호선 탑승 후 서면역에서 1호선 환승, 노포역 하차 (총 약 46분 소요)</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">10:00</div>
+        <div class="stop-title" data-ko="부산종합버스터미널(노포동) → 경주시외버스터미널" data-ja="釜山総合バスターミナル(老圃洞) → 慶州市外バスターミナル">부산종합버스터미널(노포동) → 경주시외버스터미널</div>
+        <div class="stop-blurb" data-ko="노포역 바로 옆 부산종합버스터미널에서 경주행 시외버스 탑승 (약 50분 소요, 요금 약 7,700원, 20분 이내 배차)" data-ja="老圃駅すぐ隣の釜山総合バスターミナルから慶州行きの市外バスに乗車(約50分、運賃約7,700ウォン、20分間隔で運行)">노포역 바로 옆 부산종합버스터미널에서 경주행 시외버스 탑승 (약 50분 소요, 요금 약 7,700원, 20분 이내 배차)</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">11:30</div>
+        <div class="stop-title" data-ko="황리단길 점심" data-ja="ファンリダンギルでランチ">황리단길 점심</div>
+        <div class="stop-blurb" data-ko="짐 정리하고 황리단길에서 점심 (칼국수·전통음식 등 팀이 같이 먹기 좋은 식당 많음)" data-ja="荷物を整理してファンリダンギルでランチ(カルグクスや伝統料理など、みんなで食べやすいお店が多いエリア)">짐 정리하고 황리단길에서 점심 (칼국수·전통음식 등 팀이 같이 먹기 좋은 식당 많음)</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">13:30</div>
+        <div class="stop-title" data-ko="동궁과 월지" data-ja="東宮と月池">동궁과 월지</div>
+        <div class="stop-blurb" data-ko="회랑을 복원한 야간 개방 건물로 사진 명소, 단체사진 찍기 좋음" data-ja="回廊を復元した建物で写真スポットとして人気。集合写真にもぴったり">회랑을 복원한 야간 개방 건물로 사진 명소, 단체사진 찍기 좋음</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">14:30</div>
+        <div class="stop-title" data-ko="첨성대" data-ja="瞻星台">첨성대</div>
+        <div class="stop-blurb" data-ko="신라 시대 천문대, 경주의 대표 랜드마크" data-ja="新羅時代の天文台で、慶州を代表するランドマーク">신라 시대 천문대, 경주의 대표 랜드마크</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">15:15</div>
+        <div class="stop-title" data-ko="대릉원(고분공원)" data-ja="大陵苑(古墳公園)">대릉원(고분공원)</div>
+        <div class="stop-blurb" data-ko="거대한 고분군이 펼쳐진 공원, 단체로 산책하기 좋음" data-ja="巨大な古墳群が広がる公園で、みんなで散策するのにぴったり">거대한 고분군이 펼쳐진 공원, 단체로 산책하기 좋음</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">16:30</div>
+        <div class="stop-title" data-ko="숙소 체크인 (황리단길 또는 보문단지 인근)" data-ja="宿泊先にチェックイン(ファンリダンギルまたはボムン団地周辺)">숙소 체크인 (황리단길 또는 보문단지 인근)</div>
+        <div class="stop-blurb" data-ko="단체룸이 가능한 펜션·게스트하우스로 체크인, 마당이나 거실에서 팀별 모임 가능" data-ja="団体で泊まれるペンションやゲストハウスにチェックイン。庭やリビングでチームの集まりも可能">단체룸이 가능한 펜션·게스트하우스로 체크인, 마당이나 거실에서 팀별 모임 가능</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">18:00</div>
+        <div class="stop-title" data-ko="저녁 회식" data-ja="夕食会">저녁 회식</div>
+        <div class="stop-blurb" data-ko="황리단길 한우구이집이나 고기집에서 MT 회식" data-ja="ファンリダンギルの韓牛焼肉店などでMT(合宿)の食事会">황리단길 한우구이집이나 고기집에서 MT 회식</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">20:00</div>
+        <div class="stop-title" data-ko="동궁과 월지 야경 산책" data-ja="東宮と月池 夜景散策">동궁과 월지 야경 산책</div>
+        <div class="stop-blurb" data-ko="램프 조명이 아름답게 켜지는 경주 대표 야경 명소, 회식 후 산책" data-ja="ランプの明かりが美しく灯る慶州随一の夜景スポット。食事の後に散策">램프 조명이 아름답게 켜지는 경주 대표 야경 명소, 회식 후 산책</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">21:30</div>
+        <div class="stop-title" data-ko="숙소 복귀 및 MT 프로그램" data-ja="宿泊先に戻ってMTプログラム">숙소 복귀 및 MT 프로그램</div>
+        <div class="stop-blurb" data-ko="숙소로 돌아와 팀 게임·술자리로 친목 도모" data-ja="宿に戻ってチームゲームや飲み会で親睦を深める">숙소로 돌아와 팀 게임·술자리로 친목 도모</div>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section class="day" id="day2">
+  <div class="day-inner">
+    <div class="day-head">
+      <div class="badge">2</div>
+      <h2 data-ko="2일차" data-ja="2日目">2일차<span class="sub" data-ko="불국사 · 석굴암 · 보문단지" data-ja="仏国寺・石窟庵・ボムン団地">불국사 · 석굴암 · 보문단지</span></h2>
+    </div>
+    <ul class="stops">
+      <li class="stop">
+        <div class="stop-time">08:30</div>
+        <div class="stop-title" data-ko="조식 후 체크아웃" data-ja="朝食後チェックアウト">조식 후 체크아웃</div>
+        <div class="stop-blurb" data-ko="숙소 또는 근처 식당에서 간단히 아침 식사" data-ja="宿泊先や近くの食堂で軽く朝食">숙소 또는 근처 식당에서 간단히 아침 식사</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">09:30</div>
+        <div class="stop-title" data-ko="불국사" data-ja="仏国寺">불국사</div>
+        <div class="stop-blurb" data-ko="유네스코 세계문화유산, 경주 대표 불교 사찰" data-ja="ユネスコ世界文化遺産、慶州を代表する仏教寺院">유네스코 세계문화유산, 경주 대표 불교 사찰</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">10:30</div>
+        <div class="stop-title" data-ko="석굴암" data-ja="石窟庵">석굴암</div>
+        <div class="stop-blurb" data-ko="석굴암으로 이동하는 셔틀버스 운행 (불국사에서 약 15분), 석굴암 본존불 관람" data-ja="石窟庵行きのシャトルバスあり(仏国寺から約15分)、本尊仏を見学">석굴암으로 이동하는 셔틀버스 운행 (불국사에서 약 15분), 석굴암 본존불 관람</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">12:30</div>
+        <div class="stop-title" data-ko="점심" data-ja="ランチ">점심</div>
+        <div class="stop-blurb" data-ko="보문단지 인근 한정식 또는 쌈밥집에서 단체 식사" data-ja="ボムン団地周辺の韓定食やサムパプ店で団体食事">보문단지 인근 한정식 또는 쌈밥집에서 단체 식사</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">14:00</div>
+        <div class="stop-title" data-ko="보문관광단지 자전거·오리배 드라이브" data-ja="ポムン観光団地 サイクリング・スワンボート">보문관광단지 자전거·오리배 드라이브</div>
+        <div class="stop-blurb" data-ko="호수를 따라 자전거 또는 오리배를 타고 도는 코스가 인기, 단체로 타기 좋음" data-ja="湖沿いをサイクリングやスワンボートで巡るのが人気、みんなで楽しめる">호수를 따라 자전거 또는 오리배를 타고 도는 코스가 인기, 단체로 타기 좋음</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">16:00</div>
+        <div class="stop-title" data-ko="경주 → 부산종합버스터미널" data-ja="慶州 → 釜山総合バスターミナル">경주 → 부산종합버스터미널</div>
+        <div class="stop-blurb" data-ko="경주시외버스터미널로 이동해 부산행 버스 탑승 (약 50분)" data-ja="慶州市外バスターミナルから釜山行きバスに乗車(約50分)">경주시외버스터미널로 이동해 부산행 버스 탑승 (약 50분)</div>
+      </li>
+      <li class="stop">
+        <div class="stop-time">17:00</div>
+        <div class="stop-title" data-ko="노포역 → 경성대 지하철 귀교" data-ja="老圃駅 → 慶星大 地下鉄で帰路">노포역 → 경성대 지하철 귀교</div>
+        <div class="stop-blurb" data-ko="1호선에서 서면 환승 후 2호선으로 경성대까지 이동, MT 마무리" data-ja="1号線からソミョンで2号線に乗り換え、慶星大まで移動してMT終了">1호선에서 서면 환승 후 2호선으로 경성대까지 이동, MT 마무리</div>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section class="tips">
+  <h2 data-ko="여행 팁" data-ja="旅のポイント">여행 팁</h2>
+  <div class="tip-grid">
+    <div class="tip">
+      <h3 data-ko="교통" data-ja="交通">교통</h3>
+      <p data-ko="왕복 시외버스는 미리 예매해두면 주말 매진 걱정을 덜 수 있어요." data-ja="往復の市外バスは事前予約しておくと週末の売り切れを避けられます。">왕복 시외버스는 미리 예매해두면 주말 매진 걱정을 덜 수 있어요.</p>
+    </div>
+    <div class="tip">
+      <h3 data-ko="숙소" data-ja="宿泊">숙소</h3>
+      <p data-ko="거실이나 마당이 있는 펜션·독채 게스트하우스가 단체 모임에 좋아요." data-ja="リビングや庭のあるペンションや一棟貸しゲストハウスが団体の集まりに向いています。">거실이나 마당이 있는 펜션·독채 게스트하우스가 단체 모임에 좋아요.</p>
+    </div>
+    <div class="tip">
+      <h3 data-ko="예약 시기" data-ja="予約時期">예약 시기</h3>
+      <p data-ko="벚꽃철, 가을 단풍철 주말은 미리 예약하는 게 안전해요." data-ja="桜の季節や秋の紅葉シーズンの週末は早めの予約がおすすめです。">벚꽃철, 가을 단풍철 주말은 미리 예약하는 게 안전해요.</p>
+    </div>
+    <div class="tip">
+      <h3 data-ko="코스 조정" data-ja="コース調整">코스 조정</h3>
+      <p data-ko="술자리 위주인지 액티비티 위주인지에 따라 세부 일정을 조정할 수 있어요." data-ja="飲み会中心か、アクティビティ中心かによって詳細スケジュールを調整できます。">술자리 위주인지 액티비티 위주인지에 따라 세부 일정을 조정할 수 있어요.</p>
+    </div>
+  </div>
+</section>
+
+<section class="qr-section">
+  <a class="qr-card" href="https://url.kr/yx1mzn" target="_blank" rel="noopener">
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASIAAAEiAQMAAABncE31AAAABlBMVEX///8AAABVwtN+AAAACXBIWXMAAA7EAAAOxAGVKw4bAAABR0lEQVRoge2YS46EMAxELXEAjsTVORIHQMrgX2xG6l5RbLpqwSd+WZVsJxahqJ/UOkL7Gg/ZDpFcPUkBqXgHJYs+9PcWJQWizIiL0i8358xNpF6iLDGmQ6RepCT03SFSj1Ies5XtCvnO/RYlBaGqI2d58hp178ikAFTTMipZPovUY9Rq6TC8F9gh9EoRzRPtD91HUhAqYpEiWZ4yQApFSZz4G6Dm1LmIFJLydPCi5JZoYth94CAFpMyXQ1ozTnNulYkUhrqM0GacCl9yOykYpdpy3iCSvgzTLqTQVB097cplzXhUoSKFoWplRJ740OHuECkEVWoX3zO9IoWkmhtLfs3eTApLxc+Yk+YqTy2HSGEoSwenahAROkm9QZlNdRpqJyRScCpHDfMG9u+uQOp5ytQH/G6OihSUyho0u0LFWnaQAlAU9XP6A1Ce67ps4XRBAAAAAElFTkSuQmCC" alt="QR code">
+    <h3 data-ko="자세히 보기" data-ja="詳しく見る">자세히 보기</h3>
+    <p data-ko="QR코드를 스캔하거나 눌러서 확인하세요" data-ja="QRコードをスキャンまたはタップしてご確認ください">QR코드를 스캔하거나 눌러서 확인하세요</p>
+  </a>
+</section>
+
+<footer data-ko="GYEONGJU, 1 NIGHT 2 DAYS · KYUNGSUNG UNIV → GYEONGJU" data-ja="GYEONGJU, 1 NIGHT 2 DAYS · KYUNGSUNG UNIV → GYEONGJU">GYEONGJU, 1 NIGHT 2 DAYS · KYUNGSUNG UNIV → GYEONGJU</footer>
+
+<script>
+  function setLang(lang){
+    document.body.setAttribute('data-lang', lang);
+    document.documentElement.setAttribute('lang', lang);
+    document.getElementById('btn-ko').classList.toggle('active', lang === 'ko');
+    document.getElementById('btn-ja').classList.toggle('active', lang === 'ja');
+    document.querySelectorAll('[data-ko]').forEach(function(el){
+      var text = lang === 'ja' ? el.getAttribute('data-ja') : el.getAttribute('data-ko');
+      if(text === null) return;
+      if(el.getAttribute('data-html') === 'true'){
+        el.innerHTML = text;
+      } else {
+        el.textContent = text;
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
