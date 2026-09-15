@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Image Resizer</title>
+  <!-- JSZip CDN for ZIP download -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    }
+
+    body {
+      background-color: #f3f4f6;
+      color: #1f2937;
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      padding: 24px 32px;
+    }
+
+    /* 1, 2. 상단 헤더 */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .logo-area a {
+      display: inline-flex;
+      align-items: center;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: #111827;
+    }
+
+    .logo-area img {
+      height: 36px;
+      margin-right: 8px;
+      object-fit: contain;
+    }
+
+    .header-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #4b5563;
+    }
+
+    /* 3. 메인 업로드 드래그 앤 드롭 영역 */
+    .upload-zone {
+      margin-top: 24px;
+      border: 2px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 36px 20px;
+      text-align: center;
+      background-color: #f8fafc;
+      cursor: pointer;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+
+    .upload-zone.dragover {
+      border-color: #3b82f6;
+      background-color: #eff6ff;
+    }
+
+    .upload-zone p {
+      margin-bottom: 12px;
+      color: #64748b;
+      font-size: 0.95rem;
+    }
+
+    .upload-btn {
+      display: inline-block;
+      padding: 8px 18px;
+      background-color: #2563eb;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    /* 옵션 섹션 */
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 24px;
+      background-color: #f8fafc;
+      padding: 20px;
+      border-radius: 12px;
+    }
+
+    .option-group label.group-title {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 10px;
+      font-size: 0.95rem;
+    }
+
+    /* 4. 비율 선택 */
+    .ratio-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .ratio-btn {
+      border: 1px solid #cbd5e1;
+      background: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .ratio-btn.active {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+    }
+
+    .custom-ratio-inputs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+    }
+
+    .custom-ratio-inputs input {
+      width: 60px;
+      padding: 4px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    /* 5, 6, 7. 작업 모드 (Padding / Crop) */
+    .mode-radios {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+
+    .mode-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .padding-color-picker {
+      margin-left: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+
+    .padding-color-picker input[type="color"] {
+      border: none;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      border-radius: 4px;
+      background: none;
+    }
+
+    /* 8, 9, 10, 11. 작업 목록 & 리스트 */
+    .task-section {
+      margin-top: 28px;
+    }
+
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .task-header h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .batch-download-btn {
+      padding: 8px 16px;
+      background-color: #10b981;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    .batch-download-btn:disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .image-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+    }
+
+    .item-thumb {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 6px;
+      background-color: #e2e8f0;
+      flex-shrink: 0;
+    }
+
+    .item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .item-name {
+      font-size: 0.9rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 6px;
+    }
+
+    .progress-bar-wrap {
+      width: 100%;
+      height: 8px;
+      background-color: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 100%;
+      background-color: #3b82f6;
+      transition: width 0.15s ease-out;
+    }
+
+    .item-action {
+      flex-shrink: 0;
+    }
+
+    .item-download-btn {
+      padding: 6px 12px;
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      display: none;
+    }
+
+    .item-download-btn:disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 1, 2. 상단 헤더 영역 -->
+    <header>
+      <div class="logo-area">
+        <a href="https://nanalab.kr" target="_blank" rel="noopener noreferrer">
+          <img src="logo.png" alt="Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';" />
+          <span style="display:none;">nana company</span>
+        </a>
+      </div>
+      <div class="header-title">Smart Image Resizer</div>
+    </header>
+
+    <!-- 3. 드래그 앤 드롭 업로드 영역 -->
+    <div class="upload-zone" id="uploadZone">
+      <p>이미지 파일을 드래그 앤 드롭하거나 아래 버튼을 클릭하세요.</p>
+      <label class="upload-btn" for="fileInput">파일 선택</label>
+      <input type="file" id="fileInput" multiple accept="image/*" />
+    </div>
+
+    <!-- 옵션 패널 -->
+    <div class="options-grid">
+      <!-- 4. 캔버스 비율 설정 -->
+      <div class="option-group">
+        <label class="group-title">비율 선택</label>
+        <div class="ratio-buttons" id="ratioButtons">
+          <button class="ratio-btn active" data-ratio="1:1">1:1</button>
+          <button class="ratio-btn" data-ratio="3:4">3:4</button>
+          <button class="ratio-btn" data-ratio="4:3">4:3</button>
+          <button class="ratio-btn" data-ratio="9:16">9:16</button>
+          <button class="ratio-btn" data-ratio="16:9">16:9</button>
+          <button class="ratio-btn" data-ratio="custom">Custom</button>
+        </div>
+        <div class="custom-ratio-inputs" id="customInputs" style="display: none;">
+          <input type="number" id="customW" placeholder="W" value="1" min="1" />
+          <span>:</span>
+          <input type="number" id="customH" placeholder="H" value="1" min="1" />
+        </div>
+      </div>
+
+      <!-- 5, 6, 7. 작업 모드 (Padding / Crop) -->
+      <div class="option-group">
+        <label class="group-title">작업 모드</label>
+        <div class="mode-radios">
+          <label class="mode-item">
+            <input type="radio" name="mode" value="padding" checked />
+            <span>Padding (여백 유지)</span>
+          </label>
+          <div class="padding-color-picker" id="colorPickerWrap">
+            <span>여백 색상:</span>
+            <input type="color" id="paddingColor" value="#ffffff" />
+          </div>
+          <label class="mode-item">
+            <input type="radio" name="mode" value="crop" />
+            <span>Crop (자르기)</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8, 9, 10, 11. 작업 목록 및 프로그레스 바 -->
+    <div class="task-section">
+      <div class="task-header">
+        <h3>작업 목록</h3>
+        <button id="batchDownloadBtn" class="batch-download-btn">일괄 다운로드 (.zip)</button>
+      </div>
+      <div class="item-list" id="itemList"></div>
+    </div>
+  </div>
+
+  <script>
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const ratioButtons = document.getElementById('ratioButtons');
+    const customInputs = document.getElementById('customInputs');
+    const customW = document.getElementById('customW');
+    const customH = document.getElementById('customH');
+    const paddingColorInput = document.getElementById('paddingColor');
+    const itemList = document.getElementById('itemList');
+    const batchDownloadBtn = document.getElementById('batchDownloadBtn');
+
+    let currentRatio = '1:1';
+    let processedFiles = [];
+
+    // 비율 버튼 선택 이벤트
+    ratioButtons.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('ratio-btn')) return;
+      document.querySelectorAll('.ratio-btn').forEach(btn => btn.classList.remove('active'));
+      e.target.classList.add('active');
+      currentRatio = e.target.dataset.ratio;
+
+      if (currentRatio === 'custom') {
+        customInputs.style.display = 'flex';
+      } else {
+        customInputs.style.display = 'none';
+      }
+    });
+
+    // 드래그 앤 드롭 이벤트 처리
+    ['dragenter', 'dragover'].forEach(name => {
+      uploadZone.addEventListener(name, (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(name => {
+      uploadZone.addEventListener(name, (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+      });
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+      handleFiles(files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files);
+      handleFiles(files);
+      fileInput.value = '';
+    });
+
+    function getTargetRatio() {
+      if (currentRatio === 'custom') {
+        const w = parseFloat(customW.value) || 1;
+        const h = parseFloat(customH.value) || 1;
+        return w / h;
+      }
+      const [w, h] = currentRatio.split(':').map(Number);
+      return w / h;
+    }
+
+    function handleFiles(files) {
+      if (!files.length) return;
+      batchDownloadBtn.style.display = 'block';
+
+      files.forEach(file => {
+        const itemObj = {
+          file: file,
+          name: file.name,
+          blob: null,
+          isDone: false
+        };
+        processedFiles.push(itemObj);
+        renderItem(itemObj);
+      });
+    }
+
+    function renderItem(itemObj) {
+      const itemEl = document.createElement('div');
+      itemEl.className = 'image-item';
+
+      const imgPreview = document.createElement('img');
+      imgPreview.className = 'item-thumb';
+      imgPreview.src = URL.createObjectURL(itemObj.file);
+
+      const infoEl = document.createElement('div');
+      infoEl.className = 'item-info';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'item-name';
+      nameEl.textContent = itemObj.name;
+
+      const progressWrap = document.createElement('div');
+      progressWrap.className = 'progress-bar-wrap';
+      const progressBar = document.createElement('div');
+      progressBar.className = 'progress-bar';
+      progressWrap.appendChild(progressBar);
+
+      infoEl.appendChild(nameEl);
+      infoEl.appendChild(progressWrap);
+
+      const actionEl = document.createElement('div');
+      actionEl.className = 'item-action';
+
+      const dlBtn = document.createElement('button');
+      dlBtn.className = 'item-download-btn';
+      dlBtn.textContent = '다운로드';
+      dlBtn.onclick = () => {
+        if (!itemObj.blob) return;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(itemObj.blob);
+        a.download = `resized_${itemObj.name}`;
+        a.click();
+      };
+      actionEl.appendChild(dlBtn);
+
+      itemEl.appendChild(imgPreview);
+      itemEl.appendChild(infoEl);
+      itemEl.appendChild(actionEl);
+      itemList.appendChild(itemEl);
+
+      processImage(itemObj, progressBar, dlBtn);
+    }
+
+    // 이미지 변환 및 리사이징 로직 (Padding / Crop)
+    function processImage(itemObj, progressBar, dlBtn) {
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      const paddingColor = paddingColorInput.value;
+      const targetRatio = getTargetRatio();
+
+      const img = new Image();
+      img.src = URL.createObjectURL(itemObj.file);
+
+      img.onload = () => {
+        // 프로그레스 바 애니메이션 시뮬레이션
+        let progress = 0;
+        const interval = setInterval(() => {
+          progress += 20;
+          progressBar.style.width = `${Math.min(progress, 90)}%`;
+
+          if (progress >= 100) {
+            clearInterval(interval);
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const srcW = img.width;
+            const srcH = img.height;
+
+            if (mode === 'padding') {
+              // 여백 남기기: 비율에 맞춰 캔버스 생성 후 중앙 배치
+              let canvasW, canvasH;
+              const imgRatio = srcW / srcH;
+
+              if (imgRatio > targetRatio) {
+                canvasW = srcW;
+                canvasH = srcW / targetRatio;
+              } else {
+                canvasH = srcH;
+                canvasW = srcH * targetRatio;
+              }
+
+              canvas.width = canvasW;
+              canvas.height = canvasH;
+
+              ctx.fillStyle = paddingColor;
+              ctx.fillRect(0, 0, canvasW, canvasH);
+
+              const offsetX = (canvasW - srcW) / 2;
+              const offsetY = (canvasH - srcH) / 2;
+              ctx.drawImage(img, offsetX, offsetY);
+
+            } else {
+              // 잘라내기(Crop): 대상 비율로 중앙 크롭
+              let cropW, cropH, startX, startY;
+              const imgRatio = srcW / srcH;
+
+              if (imgRatio > targetRatio) {
+                cropH = srcH;
+                cropW = srcH * targetRatio;
+                startX = (srcW - cropW) / 2;
+                startY = 0;
+              } else {
+                cropW = srcW;
+                cropH = srcW / targetRatio;
+                startX = 0;
+                startY = (srcH - cropH) / 2;
+              }
+
+              canvas.width = cropW;
+              canvas.height = cropH;
+              ctx.drawImage(img, startX, startY, cropW, cropH, 0, 0, cropW, cropH);
+            }
+
+            canvas.toBlob((blob) => {
+              itemObj.blob = blob;
+              itemObj.isDone = true;
+
+              progressBar.style.width = '100%';
+              dlBtn.style.display = 'inline-block';
+              checkAllCompleted();
+            }, 'image/jpeg', 0.92);
+          }
+        }, 60);
+      };
+    }
+
+    // 11. 일괄 다운로드 완료 상태 확인 및 ZIP 생성
+    function checkAllCompleted() {
+      const allDone = processedFiles.length > 0 && processedFiles.every(item => item.isDone);
+      if (allDone) {
+        batchDownloadBtn.disabled = false;
+      }
+    }
+
+    batchDownloadBtn.addEventListener('click', () => {
+      const zip = new JSZip();
+      processedFiles.forEach(item => {
+        if (item.blob) {
+          zip.file(`resized_${item.name}`, item.blob);
+        }
+      });
+
+      zip.generateAsync({ type: 'blob' }).then(content => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(content);
+        a.download = 'resized_images.zip';
+        a.click();
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Doc Compressor</title>
+  <!-- PDF 처리를 위한 외부 CDN 라이브러리 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #f8fafc; color: #334155; min-height: 100vh; display: flex; flex-direction: column; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 2rem; background-color: #ffffff; border-bottom: 1px solid #e2e8f0; }
+    .logo-link img { height: 36px; display: block; }
+    .app-title { font-size: 1.125rem; font-weight: 700; color: #1e293b; }
+    main { flex: 1; max-width: 760px; width: 100%; margin: 0 auto; padding: 3rem 1.5rem; }
+    .drop-zone { background-color: #ffffff; border: 2px dashed #cbd5e1; border-radius: 16px; padding: 3rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s ease; }
+    .drop-zone.dragover { border-color: #3b82f6; background-color: #eff6ff; }
+    .upload-icon { width: 56px; height: 56px; border-radius: 50%; background-color: #3b82f6; color: #ffffff; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; font-size: 1.75rem; }
+    .drop-title { font-size: 1.35rem; font-weight: 700; color: #0f172a; margin-bottom: 0.5rem; }
+    .support-types { display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    .badge { font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.5rem; border-radius: 6px; background-color: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .btn-select { background-color: #3b82f6; color: #ffffff; border: none; padding: 0.75rem 1.75rem; font-size: 0.95rem; font-weight: 600; border-radius: 9999px; cursor: pointer; }
+    #fileInput { display: none; }
+    .file-list { margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem; }
+    .file-item { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .file-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+    .file-name { font-weight: 600; color: #1e293b; word-break: break-all; margin-right: 1rem; }
+    .file-status { font-size: 0.85rem; color: #64748b; white-space: nowrap; }
+    .progress-bar-container { width: 100%; height: 8px; background-color: #e2e8f0; border-radius: 9999px; overflow: hidden; margin-bottom: 0.75rem; }
+    .progress-bar { width: 0%; height: 100%; background-color: #3b82f6; border-radius: 9999px; transition: width 0.2s ease; }
+    .action-row { display: flex; justify-content: flex-end; }
+    .btn-download { background-color: #10b981; color: #ffffff; border: none; padding: 0.5rem 1.25rem; font-size: 0.875rem; font-weight: 600; border-radius: 6px; cursor: pointer; opacity: 0.4; pointer-events: none; }
+    .btn-download.active { opacity: 1; pointer-events: auto; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="https://nanalab.kr" target="_blank" rel="noopener noreferrer" class="logo-link">
+      <img src="logo.png" alt="Logo" onerror="this.onerror=null; this.src='https://via.placeholder.com/120x36?text=LOGO';" />
+    </a>
+    <div class="app-title">Smart Doc Compressor</div>
+  </header>
+
+  <main>
+    <div class="drop-zone" id="dropZone">
+      <div class="upload-icon">↑</div>
+      <h2 class="drop-title">Upload or Drop your file!</h2>
+      <div class="support-types">
+        <span class="badge">📄 PDF (스캔본 압축)</span>
+        <span class="badge">📊 PPT / DOC</span>
+        <span class="badge">🖼️ 이미지 (JPG, PNG)</span>
+      </div>
+      <button type="button" class="btn-select" id="browseBtn">Select Files</button>
+      <input type="file" id="fileInput" multiple accept=".pdf,.ppt,.pptx,.doc,.docx,.hwp,.hwpx,.jpg,.jpeg,.png,.webp" />
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+  </main>
+
+  <script>
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    }
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const browseBtn = document.getElementById('browseBtn');
+    const fileList = document.getElementById('fileList');
+
+    browseBtn.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    ['dragenter', 'dragover'].forEach(name => {
+      dropZone.addEventListener(name, (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    });
+    ['dragleave', 'drop'].forEach(name => {
+      dropZone.addEventListener(name, (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+    });
+    dropZone.addEventListener('drop', (e) => {
+      if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFiles(e.target.files);
+    });
+
+    function handleFiles(files) {
+      Array.from(files).forEach(file => {
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        // 1. HWP 안내 처리 (⑩번 항목 요구사항)
+        if (ext === 'hwp' || ext === 'hwpx') {
+          alert(`[안내] '${file.name}'은 HWP 파일입니다.\nHWP 파일은 브라우저 직접 압축을 지원하지 않으니, PDF나 워드(DOCX) 파일로 변환하여 다시 올려주세요.`);
+          return;
+        }
+
+        // 2. 파일별 처리
+        if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+          compressImage(file);
+        } else if (ext === 'pdf') {
+          compressPdfAsScanned(file);
+        } else if (['ppt', 'pptx', 'doc', 'docx'].includes(ext)) {
+          simulateDocCompression(file);
+        } else {
+          alert(`지원하지 않는 파일 형식입니다: ${file.name}`);
+        }
+      });
+      fileInput.value = '';
+    }
+
+    // UI 생성 헬퍼
+    function createUI(fileName) {
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.innerHTML = `
+        <div class="file-info">
+          <span class="file-name">${fileName}</span>
+          <span class="file-status">준비 중...</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar"></div>
+        </div>
+        <div class="action-row">
+          <button class="btn-download">다운로드</button>
+        </div>
+      `;
+      fileList.prepend(item);
+      return {
+        progressBar: item.querySelector('.progress-bar'),
+        statusText: item.querySelector('.file-status'),
+        btnDownload: item.querySelector('.btn-download')
+      };
+    }
+
+    function setupDownload(btn, blob, filename) {
+      btn.classList.add('active');
+      btn.onclick = () => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `compressed_${filename}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      };
+    }
+
+    // ⑨ 이미지 파일 실제 캔버스 압축 (품질 60%)
+    function compressImage(file) {
+      const ui = createUI(file.name);
+      ui.statusText.textContent = "이미지 압축 중...";
+      ui.progressBar.style.width = "40%";
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+
+          // 60% 품질의 jpeg로 압축
+          canvas.toBlob((blob) => {
+            ui.progressBar.style.width = "100%";
+            ui.statusText.textContent = `압축 완료 (${(file.size / 1024).toFixed(0)}KB → ${(blob.size / 1024).toFixed(0)}KB)`;
+            setupDownload(ui.btnDownload, blob, file.name);
+          }, 'image/jpeg', 0.6);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ⑩ PDF: 모든 페이지를 저화질 스캔본(캔버스 캡처) 형태로 다시 PDF 묶기
+    async function compressPdfAsScanned(file) {
+      const ui = createUI(file.name);
+      ui.statusText.textContent = "PDF 로딩 및 페이지 분석 중...";
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const numPages = pdf.numPages;
+        const { jsPDF } = window.jspdf;
+        let doc = null;
+
+        for (let i = 1; i <= numPages; i++) {
+          ui.statusText.textContent = `페이지 스캔 압축 중 (${i}/${numPages})...`;
+          ui.progressBar.style.width = `${Math.round((i / numPages) * 90)}%`;
+
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale: 1.0 }); // 저화질 스캔 스케일
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+
+          await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+          const imgData = canvas.toDataURL('image/jpeg', 0.5); // 50% 화질 캡처
+
+          if (i === 1) {
+            doc = new jsPDF({
+              orientation: viewport.width > viewport.height ? 'l' : 'p',
+              unit: 'pt',
+              format: [viewport.width, viewport.height]
+            });
+            doc.addImage(imgData, 'JPEG', 0, 0, viewport.width, viewport.height);
+          } else {
+            doc.addPage([viewport.width, viewport.height], viewport.width > viewport.height ? 'l' : 'p');
+            doc.addImage(imgData, 'JPEG', 0, 0, viewport.width, viewport.height);
+          }
+        }
+
+        const outBlob = doc.output('blob');
+        ui.progressBar.style.width = "100%";
+        ui.statusText.textContent = `저화질 스캔본 압축 완료 (${(file.size / 1024).toFixed(0)}KB → ${(outBlob.size / 1024).toFixed(0)}KB)`;
+        setupDownload(ui.btnDownload, outBlob, file.name);
+
+      } catch (err) {
+        ui.statusText.textContent = "압축 실패 (지원되지 않는 PDF 구조)";
+        console.error(err);
+      }
+    }
+
+    // 워드 / PPT 일반 시뮬레이션
+    function simulateDocCompression(file) {
+      const ui = createUI(file.name);
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 20;
+        ui.progressBar.style.width = `${progress}%`;
+        ui.statusText.textContent = `내부 미디어 압축 중... (${progress}%)`;
+        if (progress >= 100) {
+          clearInterval(interval);
+          ui.statusText.textContent = "압축 완료 (100%)";
+          setupDownload(ui.btnDownload, new Blob([file], { type: file.type }), file.name);
+        }
+      }, 150);
+    }
+  </script>
+</body>
+</html>

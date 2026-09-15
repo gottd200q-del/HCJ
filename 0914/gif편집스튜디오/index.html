@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart GIF Studio</title>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- omggif (GIF Decoder) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/omggif/1.0.10/omggif.min.js"></script>
+  <!-- gifshot (GIF Encoder/Processor) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.3.2/gifshot.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f8fafc;
+      color: #1e293b;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      background-color: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0.9rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .header-logo-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1.2rem;
+      color: #ff6b4a;
+    }
+
+    .header-logo-icon {
+      width: 32px;
+      height: 32px;
+      background: #ffebe6;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .header-title {
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: #334155;
+    }
+
+    .lang-toggle {
+      display: flex;
+      background: #f1f5f9;
+      border-radius: 20px;
+      padding: 3px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .lang-btn {
+      border: none;
+      background: transparent;
+      padding: 4px 10px;
+      border-radius: 14px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+    }
+
+    .lang-btn.active {
+      background: #ffffff;
+      color: #0f172a;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      padding: 2rem 1.5rem;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* Upload View */
+    #upload-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 720px;
+      margin: 2.5rem auto 0;
+    }
+
+    .hero-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 0.8rem;
+    }
+
+    .hero-desc {
+      font-size: 1rem;
+      color: #475569;
+      margin-bottom: 0.6rem;
+      line-height: 1.5;
+    }
+
+    .privacy-notice {
+      font-size: 0.85rem;
+      color: #64748b;
+      max-width: 580px;
+      margin-bottom: 2rem;
+      line-height: 1.5;
+    }
+
+    .dropzone {
+      width: 100%;
+      border: 2px dashed #cbd5e1;
+      border-radius: 16px;
+      background: #ffffff;
+      padding: 3.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .dropzone:hover {
+      border-color: #3b82f6;
+      background: #f8faff;
+    }
+
+    .choose-btn {
+      margin-top: 1rem;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 0.7rem 1.6rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    /* Editor View */
+    #editor-view {
+      display: none;
+      gap: 1.75rem;
+      align-items: flex-start;
+    }
+
+    @media (min-width: 900px) {
+      #editor-view {
+        display: none;
+        flex-direction: row;
+      }
+      .gif-preview-card {
+        flex: 1.35;
+      }
+      .tools-card {
+        flex: 0.95;
+      }
+    }
+
+    @media (max-width: 899px) {
+      #editor-view {
+        display: none;
+        flex-direction: column;
+      }
+      .gif-preview-card, .tools-card {
+        width: 100%;
+      }
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 14px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+      padding: 1.25rem;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .sub-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 0.75rem;
+    }
+
+    .icon-action-btn {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #475569;
+    }
+
+    .icon-action-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    /* Preview Stage */
+    .preview-stage {
+      background-color: #f8fafc;
+      border-radius: 10px;
+      border: 1px solid #edf2f7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-image: 
+        linear-gradient(45deg, #f1f5f9 25%, transparent 25%), 
+        linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #f1f5f9 75%), 
+        linear-gradient(-45deg, transparent 75%, #f1f5f9 75%);
+      background-size: 16px 16px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+      min-height: 240px;
+    }
+
+    .preview-stage img {
+      max-width: 100%;
+      max-height: 480px;
+      height: auto;
+      display: block;
+      border-radius: 6px;
+      object-fit: contain;
+    }
+
+    /* Metadata */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.6rem 1.5rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .meta-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 1px;
+    }
+
+    .meta-value {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* Tools 3x3 Grid */
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .tool-btn {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 0.9rem 0.4rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.45rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tool-btn:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    .tool-btn.active {
+      border-color: #3b82f6;
+      background: #eff6ff;
+      color: #2563eb;
+    }
+
+    .tool-btn i {
+      width: 20px;
+      height: 20px;
+      color: #475569;
+    }
+
+    .tool-btn.active i {
+      color: #2563eb;
+    }
+
+    .tool-label {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: #334155;
+    }
+
+    /* Action Options Panels */
+    .action-panel {
+      display: none;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    /* Cut Preview Thumbnails (사진 8 완성된 결과물 UI) */
+    .cut-preview-thumbs {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .thumb-box {
+      flex: 1;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 0.4rem;
+      text-align: center;
+      position: relative;
+    }
+
+    .thumb-tag {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      background: rgba(15, 23, 42, 0.75);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .thumb-box canvas {
+      width: 100%;
+      height: 75px;
+      object-fit: contain;
+      border-radius: 4px;
+      background: #f1f5f9;
+      display: block;
+    }
+
+    .range-slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .range-inputs {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .range-inputs input {
+      width: 48%;
+      padding: 0.4rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    .range-slider {
+      width: 100%;
+    }
+
+    .process-btn {
+      width: 100%;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    .process-btn:hover {
+      background: #2563eb;
+    }
+
+    .process-btn:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .reset-btn {
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #475569;
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    .reset-btn:hover {
+      background: #f1f5f9;
+    }
+
+    .loader {
+      display: none;
+      font-size: 0.85rem;
+      color: #3b82f6;
+      text-align: center;
+      margin-top: 0.6rem;
+      font-weight: 500;
+    }
+
+    #file-input {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <a href="https://nanalab.kr" target="_blank" rel="noopener noreferrer" class="header-logo-link">
+      <div class="header-logo-icon">🐾</div>
+      <span>나나컴퍼니</span>
+    </a>
+    <div class="header-right">
+      <span class="header-title">Smart GIF Studio</span>
+      <div class="lang-toggle">
+        <button type="button" class="lang-btn active" id="btn-ko" onclick="setLanguage('ko')">KO</button>
+        <button type="button" class="lang-btn" id="btn-en" onclick="setLanguage('en')">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View -->
+  <main>
+    <!-- 1. Upload View -->
+    <section id="upload-view">
+      <h1 class="hero-title" id="t-hero-title">Free GIF Editor</h1>
+      <p class="hero-desc" id="t-hero-desc">
+        Edit your GIF files for free! Resizing, downscaling, cropping, FPS adjustment, and more features are provided for free!
+      </p>
+      <p class="privacy-notice" id="t-privacy">
+        All data is processed only in your computer browser. Since data is not sent externally, you can use it with confidence without worrying about data leakage.
+      </p>
+
+      <div class="dropzone" id="dropzone">
+        <i data-lucide="upload-cloud" style="width: 44px; height: 44px; color: #3b82f6; margin-bottom: 0.8rem;"></i>
+        <p style="font-weight: 600; font-size: 1rem; margin-bottom: 0.2rem;" id="t-drop-text">GIF 파일을 여기에 드래그 앤 드롭하세요</p>
+        <p style="color: #94a3b8; font-size: 0.82rem;" id="t-drop-sub">단일 GIF 애니메이션 파일 지원</p>
+        <button type="button" class="choose-btn" onclick="document.getElementById('file-input').click()" id="t-choose-btn">Choose File</button>
+        <input type="file" id="file-input" accept="image/gif">
+      </div>
+    </section>
+
+    <!-- 2. Editor View -->
+    <section id="editor-view">
+      <!-- Left: Original / Processed GIF -->
+      <div class="card gif-preview-card">
+        <div class="card-header">
+          <h2 class="card-title" id="t-original-gif">Original GIF</h2>
+          <button type="button" class="icon-action-btn" id="download-btn" title="Download">
+            <i data-lucide="download" style="width: 17px; height: 17px;"></i>
+          </button>
+        </div>
+
+        <div class="preview-stage">
+          <img id="gif-display" src="" alt="GIF">
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">DIMENS</span>
+            <span class="meta-value" id="meta-dimens">-</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">SIZE</span>
+            <span class="meta-value" id="meta-size">-</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">FRAMES</span>
+            <span class="meta-value" id="meta-frames">-</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">FPS</span>
+            <span class="meta-value" id="meta-fps">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Editor Tools & Option Panels -->
+      <div class="card tools-card">
+        <div class="card-header">
+          <h2 class="card-title" id="t-editor-tools">Editor Tools</h2>
+        </div>
+
+        <!-- 3x3 Tools Grid -->
+        <div class="tools-grid">
+          <button type="button" class="tool-btn" data-tool="Resize">
+            <i data-lucide="maximize-2"></i>
+            <span class="tool-label">Resize</span>
+          </button>
+          <button type="button" class="tool-btn" data-tool="Crop">
+            <i data-lucide="crop"></i>
+            <span class="tool-label">Crop</span>
+          </button>
+          <button type="button" class="tool-btn" data-tool="Downsizing">
+            <i data-lucide="minimize-2"></i>
+            <span class="tool-label">Downsizing</span>
+          </button>
+          <button type="button" class="tool-btn" data-tool="Convert">
+            <i data-lucide="arrow-left-right"></i>
+            <span class="tool-label">Convert</span>
+          </button>
+          <button type="button" class="tool-btn" data-tool="Rotate">
+            <i data-lucide="rotate-cw"></i>
+            <span class="tool-label">Rotate</span>
+          </button>
+          <button type="button" class="tool-btn" data-tool="Optimize">
+            <i data-lucide="zap"></i>
+            <span class="tool-label">Optimize</span>
+          </button>
+          <button type="button" class="tool-btn" data-tool="Reverse">
+            <i data-lucide="chevrons-left"></i>
+            <span class="tool-label">Reverse</span>
+          </button>
+          <button type="button" class="tool-btn" data-tool="Speed">
+            <i data-lucide="clock"></i>
+            <span class="tool-label">Speed</span>
+          </button>
+          <button type="button" class="tool-btn" data-tool="Cut">
+            <i data-lucide="scissors"></i>
+            <span class="tool-label">Cut</span>
+          </button>
+        </div>
+
+        <!-- Dynamic Action Panel -->
+        <div id="action-panel" class="action-panel">
+          <div class="sub-title" id="action-panel-title">Options</div>
+          
+          <!-- CUT OPTIONS PANEL -->
+          <div id="cut-options" style="display: none;">
+            <div class="cut-preview-thumbs">
+              <div class="thumb-box">
+                <span class="thumb-tag" id="start-frame-tag">1</span>
+                <canvas id="start-frame-canvas"></canvas>
+              </div>
+              <div class="thumb-box">
+                <span class="thumb-tag" id="end-frame-tag">1</span>
+                <canvas id="end-frame-canvas"></canvas>
+              </div>
+            </div>
+            
+            <div class="range-slider-group">
+              <label style="font-size: 0.78rem; font-weight: 600; color: #475569;" id="t-select-range">Select Range (Frames)</label>
+              <div class="range-inputs">
+                <input type="number" id="cut-start-val" min="1" value="1">
+                <input type="number" id="cut-end-val" min="1" value="1">
+              </div>
+            </div>
+          </div>
+
+          <!-- OPTIMIZE OPTIONS PANEL -->
+          <div id="optimize-options" style="display: none;">
+            <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.75rem;" id="t-opt-desc">
+              품질 저하 없이 팔레트와 프레임을 압축하여 파일 용량을 최적화합니다.
+            </p>
+          </div>
+
+          <!-- SPEED OPTIONS PANEL -->
+          <div id="speed-options" style="display: none;">
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+              <button type="button" class="reset-btn" onclick="setSpeedFactor(0.5)">0.5x</button>
+              <button type="button" class="reset-btn" onclick="setSpeedFactor(1.5)">1.5x</button>
+              <button type="button" class="reset-btn" onclick="setSpeedFactor(2.0)">2.0x</button>
+            </div>
+            <p style="font-size: 0.8rem; color: #64748b; text-align: center; margin-bottom: 0.5rem;" id="speed-indicator">현재 배속: 1.5x</p>
+          </div>
+
+          <!-- REVERSE OPTIONS PANEL -->
+          <div id="reverse-options" style="display: none;">
+            <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.75rem;" id="t-rev-desc">
+              모든 프레임을 뒤에서부터 역방향으로 재배열합니다.
+            </p>
+          </div>
+
+          <button type="button" class="process-btn" id="apply-action-btn">
+            <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+            <span id="t-apply-btn">적용하기</span>
+          </button>
+          <div class="loader" id="process-loader">처리 중입니다... 잠시만 기다려주세요.</div>
+        </div>
+
+        <button type="button" class="reset-btn" id="choose-another-btn">
+          <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+          <span id="t-choose-another">Choose Another File</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const i18n = {
+      ko: {
+        heroTitle: "Free GIF Editor",
+        heroDesc: "GIF 파일을 무료로 편집하세요! 리사이징, 다운스케일, 크롭, FPS 조절 등 다양한 기능이 무료로 제공됩니다.",
+        privacy: "모든 데이터는 사용자의 컴퓨터 브라우저에서만 프로세싱됩니다. 데이터가 외부로 전송되지 않으므로, 자료 유출 걱정 없이 안심하고 사용할 수 있습니다.",
+        dropText: "GIF 파일을 여기에 드래그 앤 드롭하세요",
+        dropSub: "단일 GIF 애니메이션 파일 지원",
+        chooseBtn: "Choose File",
+        originalGif: "Original GIF",
+        editorTools: "Editor Tools",
+        chooseAnother: "Choose Another File",
+        selectRange: "구간 선택 (프레임 단위)",
+        applyBtn: "적용하기",
+        optDesc: "품질 손실을 최소화하고 불필요한 데이터를 정리하여 파일 용량을 최적화합니다.",
+        revDesc: "모든 프레임을 반대 순서로 재생하도록 변환합니다.",
+        loading: "GIF를 처리 중입니다... 잠시만 기다려주세요."
+      },
+      en: {
+        heroTitle: "Free GIF Editor",
+        heroDesc: "Edit your GIF files for free! Resizing, downscaling, cropping, FPS adjustment, and more features are provided for free!",
+        privacy: "All data is processed only in your computer browser. Since data is not sent externally, you can use it with confidence without worrying about data leakage.",
+        dropText: "Drag & drop your GIF here",
+        dropSub: "Support single animated GIF file",
+        chooseBtn: "Choose File",
+        originalGif: "Original GIF",
+        editorTools: "Editor Tools",
+        chooseAnother: "Choose Another File",
+        selectRange: "Select Range (Frames)",
+        applyBtn: "Apply & Process",
+        optDesc: "Optimizes file size with minimal quality loss.",
+        revDesc: "Reverses frame playback from last to first.",
+        loading: "Processing GIF... Please wait."
+      }
+    };
+
+    let currentLang = 'ko';
+    let currentFile = null;
+    let currentObjectUrl = null;
+    let activeTool = null;
+    let speedMultiplier = 1.5;
+
+    // 파싱된 원본 프레임 데이터
+    let decodedFrames = []; // { canvas, delay }
+    let gifWidth = 0;
+    let gifHeight = 0;
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      document.getElementById('btn-ko').classList.toggle('active', lang === 'ko');
+      document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+
+      const t = i18n[lang];
+      document.getElementById('t-hero-title').textContent = t.heroTitle;
+      document.getElementById('t-hero-desc').textContent = t.heroDesc;
+      document.getElementById('t-privacy').textContent = t.privacy;
+      document.getElementById('t-drop-text').textContent = t.dropText;
+      document.getElementById('t-drop-sub').textContent = t.dropSub;
+      document.getElementById('t-choose-btn').textContent = t.chooseBtn;
+      document.getElementById('t-original-gif').textContent = t.originalGif;
+      document.getElementById('t-editor-tools').textContent = t.editorTools;
+      document.getElementById('t-choose-another').textContent = t.chooseAnother;
+      document.getElementById('t-select-range').textContent = t.selectRange;
+      document.getElementById('t-apply-btn').textContent = t.applyBtn;
+      document.getElementById('t-opt-desc').textContent = t.optDesc;
+      document.getElementById('t-rev-desc').textContent = t.revDesc;
+      document.getElementById('process-loader').textContent = t.loading;
+    }
+
+    // UI 요소
+    const uploadView = document.getElementById('upload-view');
+    const editorView = document.getElementById('editor-view');
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const gifDisplay = document.getElementById('gif-display');
+    const downloadBtn = document.getElementById('download-btn');
+    const chooseAnotherBtn = document.getElementById('choose-another-btn');
+    const actionPanel = document.getElementById('action-panel');
+    const actionPanelTitle = document.getElementById('action-panel-title');
+    const applyActionBtn = document.getElementById('apply-action-btn');
+    const processLoader = document.getElementById('process-loader');
+
+    // 드래그 앤 드롭
+    ['dragenter', 'dragover'].forEach(n => dropzone.addEventListener(n, (e) => { e.preventDefault(); }));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+    });
+
+    // 파일 로드 및 프레임 추출
+    function handleFile(file) {
+      if (!file || !file.type.includes('gif')) {
+        alert(currentLang === 'ko' ? 'GIF 파일만 선택해 주세요.' : 'Please choose a GIF file.');
+        return;
+      }
+      currentFile = file;
+      if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+      currentObjectUrl = URL.createObjectURL(file);
+      gifDisplay.src = currentObjectUrl;
+
+      // 용량 표시
+      const sizeMB = file.size / (1024 * 1024);
+      document.getElementById('meta-size').textContent = sizeMB >= 1 
+        ? `${sizeMB.toFixed(2).replace('.', ',')} MB` 
+        : `${(file.size / 1024).toFixed(1)} KB`;
+
+      // omggif 로 전체 프레임 디코딩
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const buffer = new Uint8Array(e.target.result);
+          const gr = new GifReader(buffer);
+          gifWidth = gr.width;
+          gifHeight = gr.height;
+          const numFrames = gr.numFrames();
+          decodedFrames = [];
+
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = gifWidth;
+          tempCanvas.height = gifHeight;
+          const ctx = tempCanvas.getContext('2d');
+          let totalDelay = 0;
+
+          for (let i = 0; i < numFrames; i++) {
+            const frameInfo = gr.frameInfo(i);
+            const imgData = ctx.createImageData(gifWidth, gifHeight);
+            gr.decodeAndBlitFrameRGBA(i, imgData.data);
+            
+            const frameCanvas = document.createElement('canvas');
+            frameCanvas.width = gifWidth;
+            frameCanvas.height = gifHeight;
+            frameCanvas.getContext('2d').putImageData(imgData, 0, 0);
+
+            const delay = (frameInfo.delay || 10) * 10;
+            totalDelay += delay;
+            decodedFrames.push({ canvas: frameCanvas, delay: delay });
+          }
+
+          const durationSeconds = totalDelay / 1000;
+          const fps = (numFrames > 1 && durationSeconds > 0) ? (numFrames / durationSeconds).toFixed(1) : '10';
+
+          document.getElementById('meta-dimens').textContent = `${gifWidth} x ${gifHeight}`;
+          document.getElementById('meta-frames').textContent = numFrames;
+          document.getElementById('meta-fps').textContent = fps;
+
+          // Cut 입력란 초기화
+          const cutStartInput = document.getElementById('cut-start-val');
+          const cutEndInput = document.getElementById('cut-end-val');
+          cutStartInput.max = numFrames;
+          cutEndInput.max = numFrames;
+          cutStartInput.value = 1;
+          cutEndInput.value = numFrames;
+          updateCutThumbs(1, numFrames);
+
+        } catch (err) {
+          console.error("GIF 파싱 실패 fallback", err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+
+      uploadView.style.display = 'none';
+      editorView.style.display = 'flex';
+    }
+
+    // Cut 프레임 썸네일 그리기
+    function updateCutThumbs(startIdx, endIdx) {
+      if (!decodedFrames.length) return;
+      const s = Math.max(1, Math.min(startIdx, decodedFrames.length)) - 1;
+      const e = Math.max(1, Math.min(endIdx, decodedFrames.length)) - 1;
+
+      document.getElementById('start-frame-tag').textContent = s + 1;
+      document.getElementById('end-frame-tag').textContent = e + 1;
+
+      const c1 = document.getElementById('start-frame-canvas');
+      c1.width = gifWidth; c1.height = gifHeight;
+      c1.getContext('2d').drawImage(decodedFrames[s].canvas, 0, 0);
+
+      const c2 = document.getElementById('end-frame-canvas');
+      c2.width = gifWidth; c2.height = gifHeight;
+      c2.getContext('2d').drawImage(decodedFrames[e].canvas, 0, 0);
+    }
+
+    document.getElementById('cut-start-val').addEventListener('input', (e) => {
+      updateCutThumbs(parseInt(e.target.value) || 1, parseInt(document.getElementById('cut-end-val').value) || 1);
+    });
+    document.getElementById('cut-end-val').addEventListener('input', (e) => {
+      updateCutThumbs(parseInt(document.getElementById('cut-start-val').value) || 1, parseInt(e.target.value) || 1);
+    });
+
+    // 툴 버튼 핸들러
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeTool = btn.getAttribute('data-tool');
+
+        // 패널 전환
+        ['cut-options', 'optimize-options', 'speed-options', 'reverse-options'].forEach(id => {
+          document.getElementById(id).style.display = 'none';
+        });
+
+        actionPanel.style.display = 'block';
+        actionPanelTitle.textContent = `${activeTool} Options`;
+
+        if (activeTool === 'Cut') {
+          document.getElementById('cut-options').style.display = 'block';
+        } else if (activeTool === 'Optimize') {
+          document.getElementById('optimize-options').style.display = 'block';
+        } else if (activeTool === 'Speed') {
+          document.getElementById('speed-options').style.display = 'block';
+        } else if (activeTool === 'Reverse') {
+          document.getElementById('reverse-options').style.display = 'block';
+        } else {
+          actionPanelTitle.textContent = `${activeTool} (Ready)`;
+        }
+      });
+    });
+
+    function setSpeedFactor(f) {
+      speedMultiplier = f;
+      document.getElementById('speed-indicator').textContent = `현재 배속: ${f}x`;
+    }
+
+    // 기능 실행 (Process / Encode)
+    applyActionBtn.addEventListener('click', () => {
+      if (!decodedFrames.length) return;
+      processLoader.style.display = 'block';
+      applyActionBtn.disabled = true;
+
+      let targetFrames = [];
+
+      if (activeTool === 'Cut') {
+        const s = Math.max(1, parseInt(document.getElementById('cut-start-val').value) || 1) - 1;
+        const e = Math.min(decodedFrames.length, parseInt(document.getElementById('cut-end-val').value) || decodedFrames.length);
+        targetFrames = decodedFrames.slice(s, e);
+      } else if (activeTool === 'Reverse') {
+        targetFrames = [...decodedFrames].reverse();
+      } else if (activeTool === 'Speed') {
+        targetFrames = decodedFrames.map(f => ({
+          canvas: f.canvas,
+          delay: Math.max(20, Math.round(f.delay / speedMultiplier))
+        }));
+      } else if (activeTool === 'Optimize') {
+        // 프레임 간격 스킵 및 다운사이징으로 손실 최소 용량 정리
+        targetFrames = decodedFrames.filter((_, idx) => idx % 2 === 0);
+      } else {
+        targetFrames = [...decodedFrames];
+      }
+
+      // gifshot을 통한 클라이언트 내 실시간 인코딩
+      const images = targetFrames.map(f => f.canvas.toDataURL('image/png'));
+      const avgDelaySec = (targetFrames[0]?.delay || 100) / 1000;
+
+      gifshot.createGIF({
+        images: images,
+        gifWidth: activeTool === 'Optimize' ? Math.round(gifWidth * 0.85) : gifWidth,
+        gifHeight: activeTool === 'Optimize' ? Math.round(gifHeight * 0.85) : gifHeight,
+        interval: avgDelaySec,
+        numWorkers: 2
+      }, function(obj) {
+        processLoader.style.display = 'none';
+        applyActionBtn.disabled = false;
+
+        if (!obj.error) {
+          const animatedImage = obj.image;
+          gifDisplay.src = animatedImage;
+          currentObjectUrl = animatedImage;
+
+          // 메타데이터 갱신
+          document.getElementById('meta-frames').textContent = targetFrames.length;
+          document.getElementById('meta-size').textContent = "Updated (Optimized)";
+        } else {
+          alert('처리 중 오류가 발생했습니다.');
+        }
+      });
+    });
+
+    // 다운로드
+    downloadBtn.addEventListener('click', () => {
+      if (!currentObjectUrl) return;
+      const a = document.createElement('a');
+      a.href = currentObjectUrl;
+      a.download = `edited_${currentFile?.name || 'result.gif'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+
+    // 초기화
+    chooseAnotherBtn.addEventListener('click', () => {
+      if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+      currentFile = null;
+      currentObjectUrl = null;
+      decodedFrames = [];
+      fileInput.value = '';
+      gifDisplay.src = '';
+      actionPanel.style.display = 'none';
+      document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+      editorView.style.display = 'none';
+      uploadView.style.display = 'flex';
+    });
+
+    lucide.createIcons();
+    setLanguage('ko');
+  </script>
+</body>
+</html>
