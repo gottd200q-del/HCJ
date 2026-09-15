@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lorem Ipsum Generator</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700;800&family=Noto+Sans+KR:wght@400;600;700;800&display=swap');
+:root{--mx:50%;--my:20%;--ink:#20263a;--muted:#727b90}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:"Noto Sans KR","DM Sans",sans-serif;color:var(--ink);
+background:radial-gradient(circle at var(--mx) var(--my),rgba(255,255,255,.98) 0 7%,rgba(255,255,255,.4) 23%,transparent 47%),
+radial-gradient(circle at 8% 8%,#dff4ff,transparent 36%),
+radial-gradient(circle at 92% 12%,#eee6ff,transparent 35%),
+radial-gradient(circle at 55% 100%,#fff0dc,transparent 40%),#f8faff;overflow-x:hidden}
+body:before{content:"";position:fixed;pointer-events:none;width:430px;height:430px;border-radius:50%;
+left:calc(var(--mx) - 215px);top:calc(var(--my) - 215px);
+background:radial-gradient(circle,rgba(106,133,255,.14),transparent 68%);filter:blur(12px);transition:left .55s ease,top .55s ease}
+.wrap{width:min(980px,92%);margin:auto;padding:34px 0 70px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:55px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:20px}
+.mark{width:43px;height:43px;border-radius:14px;display:grid;place-items:center;color:#fff;font-family:"DM Sans";
+background:linear-gradient(135deg,#597bf8,#a07bff);box-shadow:0 12px 28px rgba(91,124,250,.22)}
+.badge{font-size:12px;color:#64708a;padding:9px 14px;border-radius:999px;background:rgba(255,255,255,.72);border:1px solid #fff}
+.hero{text-align:center;margin-bottom:30px}
+.eyebrow{display:inline-block;padding:8px 13px;border-radius:999px;background:#ffffffb8;border:1px solid #fff;color:#6577ca;font-size:11px;font-weight:800;letter-spacing:.1em}
+h1{font-size:clamp(35px,6vw,60px);line-height:1.05;letter-spacing:-.055em;margin:17px 0 11px;
+background:linear-gradient(100deg,#4d70f5,#8b69ec,#dc8c78);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{margin:0;color:var(--muted);font-size:15px}
+.card{background:rgba(255,255,255,.82);backdrop-filter:blur(24px);border:1px solid #fff;border-radius:30px;
+box-shadow:0 25px 75px rgba(45,60,110,.11);padding:30px}
+.control-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:20px}
+.control-title{font-size:15px;font-weight:800}.count{font-family:"DM Sans";font-size:38px;font-weight:800;
+background:linear-gradient(135deg,#5375f7,#9475f4);-webkit-background-clip:text;background-clip:text;color:transparent}
+.unit{font-size:13px;color:#7a8396;margin-left:3px}
+input[type=range]{width:100%;height:8px;appearance:none;-webkit-appearance:none;border-radius:99px;outline:0;
+background:linear-gradient(90deg,#5d7df8 var(--value,3%),#e9edf7 var(--value,3%));cursor:pointer}
+input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:25px;height:25px;border-radius:50%;
+background:#fff;border:5px solid #637ff7;box-shadow:0 5px 16px rgba(91,124,250,.28)}
+input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;background:#fff;border:5px solid #637ff7;box-shadow:0 5px 16px rgba(91,124,250,.28)}
+.scale{display:flex;justify-content:space-between;color:#8b94a7;font-size:12px;margin-top:11px}
+.textbox{margin-top:25px;padding:26px;border-radius:22px;background:rgba(249,250,254,.88);border:1px solid #e8ebf3;
+font-family:Georgia,"Times New Roman",serif;font-size:17px;line-height:1.8;min-height:240px;white-space:pre-wrap;
+word-break:break-word;color:#30384d}
+.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:17px}
+button{border:0;border-radius:13px;padding:12px 19px;font:700 13px "Noto Sans KR";cursor:pointer;transition:.2s}
+button:hover{transform:translateY(-1px)}
+.copy{color:#fff;background:linear-gradient(135deg,#5d7df8,#9877f5);box-shadow:0 10px 22px rgba(91,124,250,.2)}
+.reset{background:#fff;color:#68738a;border:1px solid #e5e9f1}
+.hint{text-align:center;color:#929bad;font-size:12px;margin-top:22px}
+@media(max-width:600px){header{margin-bottom:38px}.card{padding:20px}.textbox{font-size:16px;padding:20px}.control-head{align-items:center}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand"><div class="mark">LI</div><span>Lorem Ipsum</span></div>
+  <div class="badge">TEXT GENERATOR</div>
+</header>
+
+<section class="hero">
+  <span class="eyebrow">SIMPLE · FAST · FLEXIBLE</span>
+  <h1>Lorem Ipsum<br>Generator</h1>
+  <p>슬라이더를 움직여 원하는 글자 수의 Lorem Ipsum을 만들어 보세요.</p>
+</section>
+
+<section class="card">
+  <div class="control-head">
+    <div class="control-title">생성할 글자 수</div>
+    <div><span class="count" id="count">150</span><span class="unit">자</span></div>
+  </div>
+
+  <input id="slider" type="range" min="10" max="5000" value="150" step="1" aria-label="생성할 글자 수">
+  <div class="scale"><span>10자</span><span>2,500자</span><span>5,000자</span></div>
+
+  <div class="textbox" id="output"></div>
+
+  <div class="actions">
+    <button class="reset" id="reset">150자로 초기화</button>
+    <button class="copy" id="copy">텍스트 복사</button>
+  </div>
+</section>
+<div class="hint" id="hint">현재 150자의 Lorem Ipsum이 표시되고 있습니다.</div>
+</div>
+
+<script>
+const lorem=`Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien risus a quam.`;
+
+const slider=document.getElementById("slider"),count=document.getElementById("count"),output=document.getElementById("output"),
+hint=document.getElementById("hint"),copy=document.getElementById("copy"),reset=document.getElementById("reset");
+
+function makeText(n){
+  let text="";
+  let i=0;
+  while(text.length<n){
+    if(i>0) text+=" ";
+    text+=lorem;
+    i++;
+  }
+  return text.slice(0,n);
+}
+function update(){
+  const n=Number(slider.value);
+  count.textContent=n.toLocaleString();
+  slider.style.setProperty("--value",((n-10)/(5000-10)*100)+"%");
+  output.textContent=makeText(n);
+  hint.textContent=`현재 ${n.toLocaleString()}자의 Lorem Ipsum이 표시되고 있습니다.`;
+}
+slider.addEventListener("input",update);
+reset.addEventListener("click",()=>{slider.value=150;update()});
+copy.addEventListener("click",async()=>{
+  try{
+    await navigator.clipboard.writeText(output.textContent);
+    copy.textContent="복사 완료 ✓";
+    setTimeout(()=>copy.textContent="텍스트 복사",1300);
+  }catch(e){
+    const ta=document.createElement("textarea");ta.value=output.textContent;document.body.appendChild(ta);ta.select();
+    document.execCommand("copy");ta.remove();copy.textContent="복사 완료 ✓";setTimeout(()=>copy.textContent="텍스트 복사",1300);
+  }
+});
+document.addEventListener("mousemove",e=>{
+  document.documentElement.style.setProperty("--mx",e.clientX+"px");
+  document.documentElement.style.setProperty("--my",e.clientY+"px");
+});
+update();
+</script>
+</body>
+</html>

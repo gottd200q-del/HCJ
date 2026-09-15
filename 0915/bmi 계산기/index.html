@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>체중 계산기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #EFF2ED;
+    --surface: #FFFFFF;
+    --line: #DADFD6;
+    --ink: #1E2A22;
+    --ink-soft: #5B675E;
+    --pine: #2F5D50;
+    --pine-deep: #21453B;
+    --blue: #3E6E9E;
+    --green: #2F6B4F;
+    --amber: #B8842E;
+    --rust: #B5502E;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans KR', sans-serif;
+    line-height: 1.6;
+    padding: 48px 20px 80px;
+  }
+  .page{
+    max-width: 620px;
+    margin: 0 auto;
+  }
+  header{ margin-bottom: 32px; }
+  h1{
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 700;
+    font-size: 32px;
+    margin: 0 0 10px;
+    color: var(--pine-deep);
+    letter-spacing: -0.01em;
+  }
+  .lede{
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 15px;
+    max-width: 46ch;
+  }
+  .card{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 28px;
+  }
+  .card + .card{ margin-top: 20px; }
+  .field-row{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  label.field{ display:flex; flex-direction:column; gap:6px; }
+  .field span{ font-size: 13px; color: var(--ink-soft); }
+  input[type=number]{
+    font-family: inherit;
+    font-size: 17px;
+    padding: 11px 12px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: #FBFCFA;
+    color: var(--ink);
+    width: 100%;
+  }
+  input[type=number]:focus{
+    outline: 2px solid var(--pine);
+    outline-offset: 1px;
+    border-color: var(--pine);
+  }
+  .gender-field{ margin-bottom: 22px; }
+  .gender-field > span{
+    display:block;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+  }
+  .segmented{
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    overflow: hidden;
+  }
+  .seg-btn{
+    flex: 1;
+    padding: 10px 0;
+    border: none;
+    background: #FBFCFA;
+    color: var(--ink-soft);
+    font-family: inherit;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+  }
+  .seg-btn + .seg-btn{ border-left: 1px solid var(--line); }
+  .seg-btn.active{
+    background: var(--pine);
+    color: #fff;
+  }
+  .submit-btn{
+    width: 100%;
+    padding: 13px 0;
+    border: none;
+    border-radius: 9px;
+    background: var(--pine-deep);
+    color: #fff;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+  .submit-btn:hover{ background: var(--pine); }
+
+  .result{ display:none; }
+  .result.show{ display:block; }
+
+  .headline-row{
+    display:flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .bmi-number{
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 700;
+    font-size: 44px;
+    color: var(--pine-deep);
+    line-height: 1;
+  }
+  .bmi-unit{ font-size: 15px; color: var(--ink-soft); }
+  .chip{
+    display:inline-block;
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #fff;
+  }
+  .sub-line{
+    color: var(--ink-soft);
+    font-size: 14px;
+    margin: 4px 0 22px;
+  }
+
+  .bar-wrap{ margin: 26px 0 8px; }
+  .bar-label-row{
+    display:flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+  .bar{
+    position: relative;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(to right, var(--blue) 0 33.3%, var(--green) 33.3% 66.7%, var(--amber) 66.7% 83.3%, var(--rust) 83.3% 100%);
+    margin: 0 3px;
+  }
+  .tick{
+    position: absolute;
+    top: -4px;
+    width: 2px;
+    height: 18px;
+    background: var(--ink);
+    opacity: 0.35;
+    transform: translateX(-1px);
+  }
+  .tick-label{
+    position: absolute;
+    top: 16px;
+    font-size: 11px;
+    color: var(--ink-soft);
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  .marker{
+    position: absolute;
+    top: -9px;
+    width: 0; height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 9px solid var(--pine-deep);
+    transform: translateX(-7px);
+  }
+  .bar-area{ position: relative; height: 44px; margin-bottom: 8px; }
+
+  .targets{
+    margin-top: 34px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .target-row{
+    display:flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #FBFCFA;
+  }
+  .target-left{ display:flex; flex-direction: column; gap: 3px; }
+  .target-name{ font-size: 14px; font-weight: 500; }
+  .target-weight{ font-size: 12px; color: var(--ink-soft); }
+  .target-diff{
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .diff-down{ color: var(--rust); }
+  .diff-up{ color: var(--blue); }
+  .diff-none{ color: var(--green); }
+
+  .note{
+    margin-top: 22px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+  }
+
+  @media (max-width: 480px){
+    .field-row{ grid-template-columns: 1fr; }
+    .bmi-number{ font-size: 38px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>체중 계산기</h1>
+    <p class="lede">키, 몸무게, 성별을 입력하면 BMI와 표준체중을 계산하고, 표준체중의 90% · 100% · 110% 지점까지 몇 kg을 빼거나 찌워야 하는지 알려드려요.</p>
+  </header>
+
+  <form id="calc-form" class="card">
+    <div class="field-row">
+      <label class="field">
+        <span>키 (cm)</span>
+        <input type="number" id="height" min="100" max="230" step="0.1" placeholder="예: 170" required>
+      </label>
+      <label class="field">
+        <span>몸무게 (kg)</span>
+        <input type="number" id="weight" min="20" max="250" step="0.1" placeholder="예: 65" required>
+      </label>
+    </div>
+    <div class="gender-field">
+      <span>성별</span>
+      <div class="segmented" id="gender-toggle">
+        <button type="button" class="seg-btn active" data-gender="male">남성</button>
+        <button type="button" class="seg-btn" data-gender="female">여성</button>
+      </div>
+    </div>
+    <button type="submit" class="submit-btn">계산하기</button>
+  </form>
+
+  <section id="result" class="card result">
+    <div class="headline-row">
+      <span class="bmi-number" id="bmi-value">0.0</span>
+      <span class="bmi-unit">BMI</span>
+      <span class="chip" id="bmi-chip">정상</span>
+    </div>
+    <p class="sub-line" id="sub-line">표준체중 0.0kg · 표준체중 대비 0%</p>
+
+    <div class="bar-wrap">
+      <div class="bar-area">
+        <div class="bar" id="bar"></div>
+      </div>
+    </div>
+
+    <div class="targets" id="targets"></div>
+
+    <p class="note">표준체중은 (신장(cm) − 100) × 0.9(남성) / 0.85(여성)로 계산했어요. BMI 지수 자체는 18~40 내외 범위라, 말씀하신 90 · 100 · 110은 표준체중 대비 비율(%)로 해석해 표시했어요. 의학적 진단이 아닌 참고용 수치예요.</p>
+  </section>
+</div>
+
+<script>
+  const genderToggle = document.getElementById('gender-toggle');
+  const heightInput = document.getElementById('height');
+  const weightInput = document.getElementById('weight');
+  let gender = 'male';
+
+  genderToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('.seg-btn');
+    if(!btn) return;
+    genderToggle.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    gender = btn.dataset.gender;
+    calculate();
+  });
+
+  function bmiCategory(bmi){
+    if(bmi < 18.5) return {label:'저체중', color:'var(--blue)'};
+    if(bmi < 23) return {label:'정상', color:'var(--green)'};
+    if(bmi < 25) return {label:'과체중', color:'var(--amber)'};
+    if(bmi < 30) return {label:'비만 1단계', color:'var(--rust)'};
+    return {label:'비만 2단계 이상', color:'var(--rust)'};
+  }
+
+  function pctCategory(pct){
+    if(pct < 90) return {label:'저체중', color:'var(--blue)'};
+    if(pct <= 110) return {label:'정상', color:'var(--green)'};
+    if(pct <= 120) return {label:'과체중', color:'var(--amber)'};
+    return {label:'비만', color:'var(--rust)'};
+  }
+
+  function fmt(n){ return (Math.round(n*10)/10).toFixed(1); }
+
+  const form = document.getElementById('calc-form');
+  const result = document.getElementById('result');
+
+  function calculate(){
+    const heightCm = parseFloat(heightInput.value);
+    const weightKg = parseFloat(weightInput.value);
+    if(!heightCm || !weightKg || heightCm <= 0 || weightKg <= 0){
+      result.classList.remove('show');
+      return;
+    }
+
+    const heightM = heightCm / 100;
+    const bmi = weightKg / (heightM * heightM);
+    const standard = gender === 'male' ? (heightCm - 100) * 0.9 : (heightCm - 100) * 0.85;
+    const pct = (weightKg / standard) * 100;
+
+    const bCat = bmiCategory(bmi);
+    const pCat = pctCategory(pct);
+
+    document.getElementById('bmi-value').textContent = fmt(bmi);
+    const chip = document.getElementById('bmi-chip');
+    chip.textContent = bCat.label;
+    chip.style.background = bCat.color;
+
+    document.getElementById('sub-line').innerHTML =
+      `표준체중 <strong>${fmt(standard)}kg</strong> · 표준체중 대비 <strong>${fmt(pct)}%</strong> (${pCat.label})`;
+
+    // bar marker
+    const bar = document.getElementById('bar');
+    bar.querySelectorAll('.tick, .tick-label, .marker').forEach(el => el.remove());
+
+    const rangeMin = 70, rangeMax = 130;
+    const posOf = (v) => Math.max(0, Math.min(100, ((v - rangeMin) / (rangeMax - rangeMin)) * 100));
+
+    [90, 100, 110].forEach(v => {
+      const tick = document.createElement('div');
+      tick.className = 'tick';
+      tick.style.left = posOf(v) + '%';
+      bar.appendChild(tick);
+      const label = document.createElement('div');
+      label.className = 'tick-label';
+      label.style.left = posOf(v) + '%';
+      label.textContent = v + '%';
+      bar.appendChild(label);
+    });
+
+    const marker = document.createElement('div');
+    marker.className = 'marker';
+    marker.style.left = posOf(pct) + '%';
+    bar.appendChild(marker);
+
+    // targets
+    const targetsEl = document.getElementById('targets');
+    targetsEl.innerHTML = '';
+    [90, 100, 110].forEach(v => {
+      const targetWeight = standard * (v / 100);
+      const diff = weightKg - targetWeight;
+      const row = document.createElement('div');
+      row.className = 'target-row';
+
+      let diffText, diffClass;
+      if(Math.abs(diff) < 0.05){
+        diffText = '이미 도달';
+        diffClass = 'diff-none';
+      } else if(diff > 0){
+        diffText = `▼ ${fmt(diff)}kg 감량`;
+        diffClass = 'diff-down';
+      } else {
+        diffText = `▲ ${fmt(-diff)}kg 증량`;
+        diffClass = 'diff-up';
+      }
+
+      row.innerHTML = `
+        <div class="target-left">
+          <span class="target-name">표준체중 ${v}%</span>
+          <span class="target-weight">목표 ${fmt(targetWeight)}kg</span>
+        </div>
+        <span class="target-diff ${diffClass}">${diffText}</span>
+      `;
+      targetsEl.appendChild(row);
+    });
+
+    result.classList.add('show');
+  }
+
+  heightInput.addEventListener('input', calculate);
+  weightInput.addEventListener('input', calculate);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    calculate();
+    if(result.classList.contains('show')){
+      result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  });
+</script>
+</body>
+</html>

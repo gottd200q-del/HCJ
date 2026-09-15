@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Combine Studio</title>
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- pdf-lib 라이브러리 CDN -->
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>
+    :root {
+      --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      --accent-color: #4f46e5;
+      --card-bg: rgba(255, 255, 255, 0.85);
+      --text-main: #1e293b;
+      --text-sub: #64748b;
+      --border-color: rgba(226, 232, 240, 0.8);
+      --hover-bg: rgba(241, 245, 249, 0.8);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 50%, #e0c3fc 100%);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .app-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 28px;
+      padding: 40px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08),
+                  0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .header-icon {
+      width: 60px;
+      height: 60px;
+      background: var(--primary-gradient);
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      color: #ffffff;
+      margin: 0 auto 16px;
+      box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25);
+    }
+
+    .header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #0f172a;
+    }
+
+    .header p {
+      font-size: 0.9rem;
+      color: var(--text-sub);
+      margin-top: 6px;
+    }
+
+    /* Drop Zone */
+    .upload-zone {
+      border: 2px dashed #a5b4fc;
+      border-radius: 20px;
+      padding: 32px 20px;
+      text-align: center;
+      background: rgba(248, 250, 252, 0.6);
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent-color);
+      background: rgba(238, 242, 255, 0.8);
+      transform: translateY(-2px);
+    }
+
+    .upload-zone i {
+      font-size: 2.5rem;
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+
+    .upload-zone span {
+      display: block;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #334155;
+      margin-bottom: 4px;
+    }
+
+    .upload-zone small {
+      color: var(--text-sub);
+      font-size: 0.8rem;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    /* File List Area */
+    .file-list {
+      margin-top: 24px;
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 4px;
+    }
+
+    .file-list::-webkit-scrollbar {
+      width: 5px;
+    }
+    .file-list::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--border-color);
+      padding: 12px 16px;
+      border-radius: 14px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .file-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .file-info i {
+      color: #ef4444;
+      font-size: 1.3rem;
+    }
+
+    .file-name {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #334155;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover:not(:disabled) {
+      background: var(--hover-bg);
+      color: var(--text-main);
+    }
+
+    .icon-btn.delete:hover {
+      background: #fef2f2;
+      color: #ef4444;
+    }
+
+    .icon-btn:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+    }
+
+    /* Output Section */
+    .input-group {
+      margin-top: 20px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-bottom: 8px;
+      letter-spacing: 0.3px;
+    }
+
+    .input-wrapper input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .input-wrapper input:focus {
+      border-color: #818cf8;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    /* Action Button */
+    .btn-submit {
+      width: 100%;
+      background: var(--primary-gradient);
+      color: #ffffff;
+      border: none;
+      border-radius: 14px;
+      padding: 15px;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-top: 24px;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-submit:disabled {
+      background: #cbd5e1;
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    .status-text {
+      font-size: 0.875rem;
+      font-weight: 500;
+      text-align: center;
+      margin-top: 16px;
+      color: #059669;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-card">
+    <div class="header">
+      <div class="header-icon"><i class="fa-solid fa-file-pdf"></i></div>
+      <h1>PDF Merge Studio</h1>
+      <p>서버 전송 없이 안전하게 브라우저에서 PDF를 합치세요</p>
+    </div>
+
+    <div class="upload-zone" id="dropZone">
+      <i class="fa-solid fa-cloud-arrow-up"></i>
+      <span>클릭하거나 PDF 파일들을 여기에 드래그하세요</span>
+      <small>여러 개 파일 선택 가능 (순서 변경 가능)</small>
+      <input type="file" id="fileInput" multiple accept="application/pdf">
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <div class="input-group">
+      <label for="outputFileName">병합 결과 파일 이름</label>
+      <div class="input-wrapper">
+        <input type="text" id="outputFileName" value="merged_document" placeholder="파일명을 입력하세요">
+      </div>
+    </div>
+
+    <button class="btn-submit" id="mergeBtn" disabled>
+      <i class="fa-solid fa-layer-group"></i> PDF 파일 병합하기
+    </button>
+    
+    <div class="status-text" id="statusMsg"></div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const fileListContainer = document.getElementById('fileList');
+    const mergeBtn = document.getElementById('mergeBtn');
+    const statusMsg = document.getElementById('statusMsg');
+    const outputFileNameInput = document.getElementById('outputFileName');
+
+    let pdfFiles = [];
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      handleFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+    function handleFiles(files) {
+      const newFiles = Array.from(files).filter(file => file.type === 'application/pdf');
+      if (newFiles.length === 0) return;
+
+      pdfFiles = [...pdfFiles, ...newFiles];
+      updateFileList();
+      fileInput.value = '';
+    }
+
+    function moveFile(index, direction) {
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= pdfFiles.length) return;
+
+      const temp = pdfFiles[index];
+      pdfFiles[index] = pdfFiles[newIndex];
+      pdfFiles[newIndex] = temp;
+
+      updateFileList();
+    }
+
+    function removeFile(index) {
+      pdfFiles.splice(index, 1);
+      updateFileList();
+    }
+
+    function updateFileList() {
+      fileListContainer.innerHTML = '';
+      
+      pdfFiles.forEach((file, index) => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        
+        item.innerHTML = `
+          <div class="file-info">
+            <i class="fa-solid fa-file-pdf"></i>
+            <span class="file-name" title="${file.name}">${index + 1}. ${file.name}</span>
+          </div>
+          <div class="file-actions">
+            <button class="icon-btn" onclick="moveFile(${index}, -1)" ${index === 0 ? 'disabled' : ''} title="위로 이동">
+              <i class="fa-solid fa-chevron-up"></i>
+            </button>
+            <button class="icon-btn" onclick="moveFile(${index}, 1)" ${index === pdfFiles.length - 1 ? 'disabled' : ''} title="아래로 이동">
+              <i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <button class="icon-btn delete" onclick="removeFile(${index})" title="삭제">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        `;
+        fileListContainer.appendChild(item);
+      });
+
+      mergeBtn.disabled = pdfFiles.length < 2;
+      statusMsg.textContent = pdfFiles.length > 0 ? `선택된 문서: 총 ${pdfFiles.length}개` : '';
+    }
+
+    mergeBtn.addEventListener('click', async () => {
+      if (pdfFiles.length < 2) return;
+
+      statusMsg.style.color = '#0284c7';
+      statusMsg.textContent = 'PDF 문서를 처리 및 병합하고 있습니다...';
+      mergeBtn.disabled = true;
+
+      try {
+        const mergedPdf = await PDFLib.PDFDocument.create();
+
+        for (const file of pdfFiles) {
+          const fileBuffer = await file.arrayBuffer();
+          const pdfDoc = await PDFLib.PDFDocument.load(fileBuffer);
+          const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+          copiedPages.forEach((page) => mergedPdf.addPage(page));
+        }
+
+        const mergedPdfBytes = await mergedPdf.save();
+
+        let customName = outputFileNameInput.value.trim() || 'merged_document';
+        if (!customName.endsWith('.pdf')) {
+          customName += '.pdf';
+        }
+
+        const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = customName;
+        link.click();
+
+        statusMsg.style.color = '#059669';
+        statusMsg.textContent = '🎉 병합 완료! 파일이 성공적으로 다운로드되었습니다.';
+      } catch (error) {
+        console.error(error);
+        statusMsg.style.color = '#dc2626';
+        statusMsg.textContent = '병합 작업 실패. 파일 손상 여부를 확인하세요.';
+      } finally {
+        mergeBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

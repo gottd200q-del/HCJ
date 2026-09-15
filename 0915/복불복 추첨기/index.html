@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>대포 룰렛 · 랜덤 추첨</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<style>
+  :root{
+    --bg: #0e0f26;
+    --bg-2: #14163a;
+    --panel: #191c47;
+    --border: #33366e;
+    --gold: #e8b74b;
+    --gold-2: #ffd873;
+    --coral: #ff6f61;
+    --text: #f3f1ea;
+    --muted: #9b9bc7;
+    --radius: 14px;
+  }
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0;
+    background: radial-gradient(ellipse at 50% -10%, #23245a 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+  }
+  h1,h2,.display{ font-family:'Fredoka', sans-serif; }
+
+  .layout{
+    display:flex;
+    gap: 28px;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 36px 20px 60px;
+    align-items: flex-start;
+  }
+  @media (max-width: 880px){
+    .layout{ flex-direction:column; align-items:stretch; }
+  }
+
+  aside.panel{
+    flex: 0 0 340px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    display:flex;
+    flex-direction:column;
+    gap: 16px;
+  }
+  aside.panel h1{
+    margin:0;
+    font-size: 28px;
+    font-weight:600;
+    color: var(--gold-2);
+    letter-spacing: 0.5px;
+  }
+  .subtitle{
+    margin:0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height:1.6;
+  }
+  label{
+    font-size: 13px;
+    color: var(--muted);
+    font-weight:600;
+  }
+  textarea{
+    width:100%;
+    min-height: 140px;
+    resize: vertical;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    padding: 12px 14px;
+    line-height: 1.7;
+  }
+  textarea:focus, button:focus-visible{
+    outline: 2px solid var(--gold-2);
+    outline-offset: 2px;
+  }
+  .error{
+    color: var(--coral);
+    font-size: 13px;
+    min-height: 18px;
+  }
+  button{
+    border:none;
+    border-radius: 10px;
+    padding: 13px 18px;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight:600;
+    cursor:pointer;
+    transition: transform .08s ease, filter .15s ease;
+  }
+  button:active{ transform: scale(0.98); }
+  button:disabled{ cursor:not-allowed; filter: grayscale(0.4) brightness(0.7); }
+  #startBtn{
+    background: linear-gradient(180deg, var(--gold-2), var(--gold));
+    color: #21150a;
+  }
+  #startBtn:hover:not(:disabled){ filter: brightness(1.06); }
+  #resetBtn{
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  #resetBtn:hover{ border-color: var(--gold-2); color: var(--gold-2); }
+
+  #statusArea{ font-size:14px; color: var(--muted); }
+  #statusText{ color: var(--gold-2); font-weight:600; }
+
+  #resultArea h2{
+    margin: 4px 0 4px;
+    font-size: 16px;
+    color: var(--text);
+    font-weight:600;
+  }
+  #resultList{
+    list-style:none;
+    margin:0; padding:0;
+    display:flex;
+    flex-direction:column;
+    gap: 6px;
+    max-height: 300px;
+    overflow-y:auto;
+  }
+  #resultList li{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+  #resultList li .dot{
+    width:14px; height:14px; border-radius:50%;
+    flex: 0 0 auto;
+    box-shadow: 0 0 6px currentColor;
+  }
+  #resultList li .rank{
+    color: var(--muted);
+    font-size: 12px;
+    min-width: 20px;
+  }
+  #resultList li .nm{ flex:1; }
+  #resultList li.winner{
+    background: linear-gradient(90deg, rgba(232,183,75,0.18), transparent);
+    border-color: var(--gold);
+  }
+  #resultList li.winner .nm{ color: var(--gold-2); font-weight:700; }
+  #resultList li.winner .trophy{ font-size:15px; }
+
+  main{
+    flex:1;
+    display:flex;
+    justify-content:center;
+    position: relative;
+  }
+  .stageWrap{
+    position:relative;
+    width:100%;
+    max-width: 640px;
+  }
+  #stage{
+    width:100%;
+    display:block;
+    aspect-ratio: 640 / 800;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+  }
+  #winnerBanner{
+    position:absolute;
+    top: 16px; left: 50%;
+    transform: translate(-50%, -14px);
+    background: rgba(14,15,38,0.92);
+    border: 1px solid var(--gold);
+    border-radius: 12px;
+    padding: 12px 26px;
+    text-align:center;
+    opacity:0;
+    pointer-events:none;
+    transition: opacity .35s ease, transform .35s ease;
+    white-space: nowrap;
+  }
+  #winnerBanner.show{
+    opacity:1;
+    transform: translate(-50%, 0);
+  }
+  #winnerBanner .label{
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  #winnerBanner .name{
+    font-family:'Fredoka', sans-serif;
+    font-size: 26px;
+    color: var(--gold-2);
+    font-weight:600;
+  }
+  @media (prefers-reduced-motion: reduce){
+    #winnerBanner{ transition:none; }
+  }
+</style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="panel">
+      <h1>대포 룰렛</h1>
+      <p class="subtitle">이름을 입력하면 구슬이 대포에서 발사돼 장애물을 통과합니다. 가장 마지막에 멈추는 구슬의 주인공이 당첨자예요.</p>
+
+      <div>
+        <label for="namesInput">참가자 이름</label><br/>
+        <textarea id="namesInput" placeholder="한 줄에 한 명씩, 또는 쉼표로 구분해 입력하세요
+예)
+철수
+영희
+민수"></textarea>
+        <div class="error" id="inputError"></div>
+      </div>
+
+      <button id="startBtn">추첨 시작</button>
+      <button id="resetBtn" hidden>다시 추첨하기</button>
+
+      <div id="statusArea" hidden>
+        <span id="statusText"></span>
+      </div>
+
+      <div id="resultArea" hidden>
+        <h2>도착 순서</h2>
+        <ol id="resultList"></ol>
+      </div>
+    </aside>
+
+    <main>
+      <div class="stageWrap">
+        <canvas id="stage"></canvas>
+        <div id="winnerBanner">
+          <div class="label">🏆 당첨</div>
+          <div class="name" id="winnerName">-</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+<script>
+(function(){
+  const W = 640, H = 800;
+  const canvas = document.getElementById('stage');
+  const ctx = canvas.getContext('2d');
+
+  function fitCanvas(){
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = W * ratio;
+    canvas.height = H * ratio;
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+  }
+  fitCanvas();
+  window.addEventListener('resize', fitCanvas);
+
+  const { Engine, World, Bodies, Body } = Matter;
+  let engine, world, pegs = [], rotors = [], floorBody;
+  let balls = [];
+  let stars = [];
+  let confetti = [];
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  for(let i=0;i<90;i++){
+    stars.push({
+      x: Math.random()*W,
+      y: Math.random()*H*0.55,
+      r: Math.random()*1.6+0.4,
+      phase: Math.random()*Math.PI*2,
+      speed: 0.6 + Math.random()*0.8
+    });
+  }
+
+  const namesInput = document.getElementById('namesInput');
+  const inputError = document.getElementById('inputError');
+  const startBtn = document.getElementById('startBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const statusArea = document.getElementById('statusArea');
+  const statusText = document.getElementById('statusText');
+  const resultArea = document.getElementById('resultArea');
+  const resultList = document.getElementById('resultList');
+  const winnerBanner = document.getElementById('winnerBanner');
+  const winnerName = document.getElementById('winnerName');
+
+  let phase = 'idle';
+  let launchIndex = 0;
+  let landCounter = 0;
+  let lastLandedLi = null;
+  let elapsed = 0;
+  let nextFireAt = 0;
+  let fireInterval = 500;
+  let finishTimeoutAt = Infinity;
+  let rafId = null;
+
+  function parseNames(raw){
+    return raw.split(/[\n,]/).map(s=>s.trim()).filter(Boolean);
+  }
+
+  function colorForIndex(i, n){
+    const hue = Math.round((360 * i / n + 18) % 360);
+    return `hsl(${hue}, 72%, 58%)`;
+  }
+
+  function setupWorld(){
+    engine = Engine.create();
+    engine.gravity.y = 1.0;
+    world = engine.world;
+
+    const wallOpts = { isStatic:true, friction:0.4, restitution:0.3, label:'wall' };
+    const leftWall = Bodies.rectangle(-10, H/2, 20, H*1.2, wallOpts);
+    const rightWall = Bodies.rectangle(W+10, H/2, 20, H*1.2, wallOpts);
+    floorBody = Bodies.rectangle(W/2, H+18, W+40, 60, { isStatic:true, friction:0.95, restitution:0.05, label:'floor' });
+    World.add(world, [leftWall, rightWall, floorBody]);
+
+    pegs = [];
+    const rowGap = 50, startY = 190, rows = 7;
+    for(let r=0;r<rows;r++){
+      const y = startY + r*rowGap;
+      const offset = (r % 2 === 0) ? 0 : 28;
+      for(let x = 46 + offset; x <= W-46; x += 56){
+        const peg = Bodies.circle(x, y, 7, { isStatic:true, friction:0.05, restitution:0.55, label:'peg' });
+        pegs.push(peg);
+      }
+    }
+    World.add(world, pegs);
+
+    rotors = [
+      { body: Bodies.rectangle(W*0.30, 410, 96, 13, { isStatic:true, friction:0.05, restitution:0.5, label:'rotor' }), speed: 0.021 },
+      { body: Bodies.rectangle(W*0.70, 500, 96, 13, { isStatic:true, friction:0.05, restitution:0.5, label:'rotor' }), speed: -0.018 },
+      { body: Bodies.rectangle(W*0.50, 600, 108, 13, { isStatic:true, friction:0.05, restitution:0.5, label:'rotor' }), speed: 0.024 },
+    ];
+    rotors.forEach(r => World.add(world, r.body));
+  }
+
+  function cannonAngle(t){
+    return Math.sin(t * 0.0021) * 0.5;
+  }
+
+  function spawnBall(nameObj, angle){
+    const speed = 15.5 + Math.random()*1.2;
+    const vx = Math.sin(angle) * speed;
+    const vy = Math.cos(angle) * speed * 0.92 + 2;
+    const startX = W/2 + Math.sin(angle) * 46;
+    const startY = 94 + Math.cos(angle) * 46;
+    const r = 13 + Math.random()*2;
+
+    const body = Bodies.circle(startX, startY, r, {
+      restitution: 0.48 + Math.random()*0.15,
+      friction: 0.15,
+      frictionAir: 0.0015,
+      density: 0.0012,
+      label: 'ball'
+    });
+    Body.setVelocity(body, { x: vx, y: vy });
+    Body.setAngularVelocity(body, (Math.random()-0.5)*0.2);
+    World.add(world, body);
+
+    nameObj.body = body;
+    nameObj.r = r;
+    nameObj.stableFrames = 0;
+    nameObj.landed = false;
+    balls.push(nameObj);
+  }
+
+  function onBallLanded(nameObj){
+    nameObj.landed = true;
+    landCounter += 1;
+    nameObj.order = landCounter;
+
+    const li = document.createElement('li');
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = nameObj.color;
+    dot.style.color = nameObj.color;
+    const rank = document.createElement('span');
+    rank.className = 'rank';
+    rank.textContent = landCounter + '.';
+    const nm = document.createElement('span');
+    nm.className = 'nm';
+    nm.textContent = nameObj.name;
+    li.appendChild(dot); li.appendChild(rank); li.appendChild(nm);
+    resultList.appendChild(li);
+    resultArea.hidden = false;
+    resultList.scrollTop = resultList.scrollHeight;
+    lastLandedLi = { li, nameObj };
+
+    checkFinish();
+  }
+
+  function checkFinish(){
+    const allLaunched = launchIndex >= totalCount;
+    const allLanded = balls.length === totalCount && balls.every(b => b.landed);
+    if(allLaunched && allLanded){
+      finishGame();
+    }
+  }
+
+  let totalCount = 0;
+
+  function finishGame(){
+    if(phase === 'finished') return;
+    phase = 'finished';
+    statusText.textContent = '추첨이 끝났습니다!';
+    if(lastLandedLi){
+      lastLandedLi.li.classList.add('winner');
+      const trophy = document.createElement('span');
+      trophy.className = 'trophy';
+      trophy.textContent = ' 🏆';
+      lastLandedLi.li.appendChild(trophy);
+      winnerName.textContent = lastLandedLi.nameObj.name;
+    }
+    winnerBanner.classList.add('show');
+    spawnConfetti();
+    resetBtn.hidden = false;
+  }
+
+  function spawnConfetti(){
+    if(reducedMotion) return;
+    const palette = ['#e8b74b','#ff6f61','#8b7cf6','#4fd1c5','#ffd873'];
+    for(let i=0;i<90;i++){
+      confetti.push({
+        x: Math.random()*W,
+        y: -20 - Math.random()*200,
+        vy: 2 + Math.random()*3,
+        vx: (Math.random()-0.5)*2,
+        size: 5 + Math.random()*5,
+        rot: Math.random()*Math.PI*2,
+        vrot: (Math.random()-0.5)*0.3,
+        color: palette[i % palette.length],
+        life: 0
+      });
+    }
+  }
+
+  function drawBackground(t){
+    ctx.clearRect(0,0,W,H);
+    const grad = ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0, '#181a44');
+    grad.addColorStop(0.5, '#12143a');
+    grad.addColorStop(1, '#0b0c22');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,W,H);
+
+    ctx.save();
+    stars.forEach(s=>{
+      const tw = reducedMotion ? 0.7 : (0.5 + 0.5*Math.sin(t*0.002*s.speed + s.phase));
+      ctx.globalAlpha = 0.25 + tw*0.6;
+      ctx.fillStyle = '#f3f1ea';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.restore();
+
+    // spotlight over cannon
+    const spot = ctx.createRadialGradient(W/2, 60, 10, W/2, 60, 220);
+    spot.addColorStop(0, 'rgba(255,216,115,0.16)');
+    spot.addColorStop(1, 'rgba(255,216,115,0)');
+    ctx.fillStyle = spot;
+    ctx.fillRect(0,0,W,H);
+  }
+
+  function drawPegs(){
+    pegs.forEach(p=>{
+      const g = ctx.createRadialGradient(p.position.x-2, p.position.y-2, 1, p.position.x, p.position.y, 8);
+      g.addColorStop(0, '#8f92c9');
+      g.addColorStop(1, '#4c4f80');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.position.x, p.position.y, 7, 0, Math.PI*2);
+      ctx.fill();
+    });
+  }
+
+  function drawRotors(){
+    rotors.forEach(r=>{
+      const b = r.body;
+      ctx.save();
+      ctx.translate(b.position.x, b.position.y);
+      ctx.rotate(b.angle);
+      const grad = ctx.createLinearGradient(-48,0,48,0);
+      grad.addColorStop(0, '#6f63d8');
+      grad.addColorStop(0.5, '#9b8ef2');
+      grad.addColorStop(1, '#6f63d8');
+      ctx.fillStyle = grad;
+      const w = 96, h = 13;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(-w/2,-h/2,w,h,6) : ctx.rect(-w/2,-h/2,w,h);
+      ctx.fill();
+      ctx.fillStyle = '#dedaff';
+      ctx.beginPath();
+      ctx.arc(0,0,4,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  function drawFloor(){
+    ctx.fillStyle = '#1c1e48';
+    ctx.fillRect(0, 758, W, 42);
+    ctx.strokeStyle = 'rgba(232,183,75,0.35)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0,758.5);
+    ctx.lineTo(W,758.5);
+    ctx.stroke();
+  }
+
+  function drawCannon(angle){
+    const px = W/2, py = 78;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(angle);
+
+    // barrel
+    const barrelGrad = ctx.createLinearGradient(-16,0,16,0);
+    barrelGrad.addColorStop(0, '#8a6a20');
+    barrelGrad.addColorStop(0.5, '#e8b74b');
+    barrelGrad.addColorStop(1, '#8a6a20');
+    ctx.fillStyle = barrelGrad;
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(-15, -14, 30, 78, 10);
+    else ctx.rect(-15,-14,30,78);
+    ctx.fill();
+
+    // muzzle ring
+    ctx.fillStyle = '#3a2c0f';
+    ctx.beginPath();
+    ctx.arc(0, 60, 16, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#1c1508';
+    ctx.beginPath();
+    ctx.arc(0, 60, 10, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // base
+    ctx.fillStyle = '#4c4f80';
+    ctx.beginPath();
+    ctx.arc(px, py-14, 20, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#e8b74b';
+    ctx.beginPath();
+    ctx.arc(px, py-14, 6, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  function drawBalls(){
+    balls.forEach(nameObj=>{
+      const b = nameObj.body;
+      const r = nameObj.r;
+      ctx.save();
+      ctx.translate(b.position.x, b.position.y);
+      ctx.rotate(b.angle);
+
+      const g = ctx.createRadialGradient(-r*0.3,-r*0.3,1, 0,0, r);
+      g.addColorStop(0, '#ffffff');
+      g.addColorStop(0.15, nameObj.color);
+      g.addColorStop(1, nameObj.color);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0,0,r,0,Math.PI*2);
+      ctx.fill();
+
+      if(nameObj.landed){
+        ctx.strokeStyle = 'rgba(232,183,75,0.9)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      ctx.rotate(-b.angle);
+      ctx.fillStyle = 'rgba(20,10,30,0.85)';
+      ctx.font = '700 12px "Space Grotesk", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(nameObj.initial, 0, 1);
+      ctx.restore();
+    });
+  }
+
+  function drawConfetti(){
+    confetti.forEach(c=>{
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.rot);
+      ctx.fillStyle = c.color;
+      ctx.fillRect(-c.size/2, -c.size/2, c.size, c.size*0.6);
+      ctx.restore();
+    });
+  }
+
+  function updateConfetti(){
+    confetti.forEach(c=>{
+      c.x += c.vx;
+      c.y += c.vy;
+      c.rot += c.vrot;
+      c.life += 1;
+    });
+    confetti = confetti.filter(c => c.y < H + 30 && c.life < 600);
+  }
+
+  function updateStatus(){
+    if(phase === 'running'){
+      if(launchIndex < totalCount){
+        statusText.textContent = `대포 발사 중… (${launchIndex} / ${totalCount})`;
+      } else {
+        statusText.textContent = '모든 구슬이 발사되었어요. 결과를 기다리는 중…';
+      }
+    }
+  }
+
+  function loop(t){
+    if(phase === 'idle'){ rafId = requestAnimationFrame(loop); drawBackground(t); drawPegs(); drawRotors(); drawFloor(); drawCannon(cannonAngle(t)); return; }
+
+    elapsed = t - startTs;
+
+    // rotor spin
+    rotors.forEach(r => Body.setAngle(r.body, r.body.angle + r.speed));
+
+    Engine.update(engine, 1000/60);
+
+    // firing
+    if(phase === 'running' && launchIndex < totalCount && elapsed >= nextFireAt){
+      const angle = cannonAngle(elapsed);
+      spawnBall(pendingNames[launchIndex], angle);
+      launchIndex += 1;
+      nextFireAt = elapsed + fireInterval;
+      updateStatus();
+    }
+
+    // landing detection
+    balls.forEach(nameObj=>{
+      if(nameObj.landed) return;
+      const b = nameObj.body;
+      const speed = Math.hypot(b.velocity.x, b.velocity.y);
+      const angSpeed = Math.abs(b.angularVelocity);
+      if(speed < 0.15 && angSpeed < 0.06){
+        nameObj.stableFrames += 1;
+        if(nameObj.stableFrames > 60){
+          onBallLanded(nameObj);
+        }
+      } else {
+        nameObj.stableFrames = 0;
+      }
+    });
+
+    if(phase === 'running' && elapsed > finishTimeoutAt){
+      balls.forEach(nameObj=>{ if(!nameObj.landed) onBallLanded(nameObj); });
+      if(launchIndex >= totalCount) finishGame();
+    }
+
+    drawBackground(t);
+    drawPegs();
+    drawRotors();
+    drawFloor();
+    if(launchIndex < totalCount || balls.some(b=>!b.landed)){
+      drawCannon(cannonAngle(elapsed));
+    }
+    drawBalls();
+    if(confetti.length){ updateConfetti(); drawConfetti(); }
+
+    rafId = requestAnimationFrame(loop);
+  }
+
+  let startTs = 0;
+  let pendingNames = [];
+
+  function startGame(){
+    const raw = namesInput.value;
+    const names = parseNames(raw);
+    if(names.length < 2){
+      inputError.textContent = '최소 2명 이상의 이름을 입력해주세요.';
+      return;
+    }
+    inputError.textContent = '';
+
+    pendingNames = names.map((name,i)=>({
+      name,
+      initial: name.trim().charAt(0),
+      color: colorForIndex(i, names.length)
+    }));
+    totalCount = names.length;
+
+    balls = [];
+    confetti = [];
+    landCounter = 0;
+    launchIndex = 0;
+    lastLandedLi = null;
+    resultList.innerHTML = '';
+    resultArea.hidden = true;
+    winnerBanner.classList.remove('show');
+    winnerName.textContent = '-';
+
+    setupWorld();
+
+    fireInterval = Math.max(140, 620 - names.length*8);
+    finishTimeoutAt = 8000 + names.length*1400;
+
+    startBtn.hidden = true;
+    resetBtn.hidden = true;
+    namesInput.disabled = true;
+    statusArea.hidden = false;
+    statusText.textContent = `대포 발사 중… (0 / ${totalCount})`;
+
+    phase = 'running';
+    startTs = performance.now();
+    nextFireAt = 0;
+  }
+
+  function resetGame(){
+    phase = 'idle';
+    balls = [];
+    confetti = [];
+    namesInput.disabled = false;
+    startBtn.hidden = false;
+    resetBtn.hidden = true;
+    statusArea.hidden = true;
+    resultArea.hidden = true;
+    winnerBanner.classList.remove('show');
+    resultList.innerHTML = '';
+    setupWorld();
+  }
+
+  startBtn.addEventListener('click', startGame);
+  resetBtn.addEventListener('click', resetGame);
+
+  setupWorld();
+  rafId = requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

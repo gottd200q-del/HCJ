@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>부재 중 알리미</title>
+  <!-- Google Fonts & Tailwind CSS CDN -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    * {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+
+    /* 실크처럼 자연스럽게 움직이는 그라데이션 애니메이션 */
+    .animated-gradient {
+      background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* 유리공예 느낌의 매끈한 Frosted Glass 효과 */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.18);
+    }
+
+    .glass-input {
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .glass-input:focus {
+      background: rgba(255, 255, 255, 0.3);
+      border-color: rgba(255, 255, 255, 0.6);
+      outline: none;
+    }
+  </style>
+</head>
+<body class="animated-gradient min-h-screen text-white flex items-center justify-center p-4 overflow-x-hidden selection:bg-white/20">
+
+  <!-- ==================== 1. 입력 폼 화면 (설정) ==================== -->
+  <div id="formContainer" class="w-full max-w-md glass-card rounded-3xl p-8 transition-all duration-500 transform hover:scale-[1.01]">
+    <div class="text-center mb-8">
+      <div class="inline-block p-3 rounded-2xl bg-white/20 mb-3 text-2xl">⏳</div>
+      <h1 class="text-3xl font-extrabold tracking-tight">부재 중 알리미</h1>
+      <p class="text-sm text-white/80 mt-1">자리를 비울 때 화면에 표시할 내용을 입력하세요</p>
+    </div>
+
+    <form id="awayForm" onsubmit="startAwayMode(event)" class="space-y-5">
+      <!-- 일정 / 사유 입력 -->
+      <div>
+        <label for="titleInput" class="block text-sm font-semibold mb-2 text-white/90">일정 / 사유</label>
+        <input 
+          type="text" 
+          id="titleInput" 
+          required 
+          placeholder="예: 점심 식사, 외부 미팅" 
+          class="w-full px-4 py-3 rounded-xl glass-input text-white placeholder-white/50 focus:ring-2 focus:ring-white/40 transition"
+        >
+      </div>
+
+      <!-- 돌아올 시간 입력 -->
+      <div>
+        <label for="timeInput" class="block text-sm font-semibold mb-2 text-white/90">복귀 예정 시간</label>
+        <input 
+          type="time" 
+          id="timeInput" 
+          required 
+          class="w-full px-4 py-3 rounded-xl glass-input text-white focus:ring-2 focus:ring-white/40 transition [color-scheme:dark]"
+        >
+      </div>
+
+      <!-- 기타 안내 문구 -->
+      <div>
+        <label for="noteInput" class="block text-sm font-semibold mb-2 text-white/90">기타 안내 문구</label>
+        <input 
+          type="text" 
+          id="noteInput" 
+          placeholder="예: 급한 업무는 슬랙/전화 연락 바랍니다." 
+          class="w-full px-4 py-3 rounded-xl glass-input text-white placeholder-white/50 focus:ring-2 focus:ring-white/40 transition"
+        >
+      </div>
+
+      <!-- 시작 버튼 -->
+      <button 
+        type="submit" 
+        class="w-full mt-4 py-4 rounded-xl bg-white text-gray-900 font-bold text-lg hover:bg-opacity-95 active:scale-[0.98] transition shadow-lg flex items-center justify-center gap-2"
+      >
+        <span>알림 화면 시작하기</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+      </button>
+    </form>
+  </div>
+
+
+  <!-- ==================== 2. 부재 중 화면 (디스플레이) ==================== -->
+  <div id="displayContainer" class="hidden fixed inset-0 flex flex-col justify-between items-center p-8 md:p-16 text-center select-none z-50">
+    
+    <!-- 상단: 배지 -->
+    <div class="pt-4">
+      <span class="inline-flex items-center gap-2 px-5 py-2 rounded-full glass-card text-xs md:text-sm font-semibold tracking-wider uppercase">
+        <span class="w-2.5 h-2.5 rounded-full bg-red-400 animate-ping"></span>
+        현재 자리 비움 중
+      </span>
+    </div>
+
+    <!-- 중앙: 주요 일정 (가장 큰 글자) & 카운트다운 -->
+    <div class="flex flex-col items-center justify-center max-w-4xl mx-auto my-auto space-y-6">
+      
+      <!-- 가장 큰 일정 타이틀 -->
+      <h1 id="displayTitle" class="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tight drop-shadow-lg leading-tight break-keep">
+        점심 식사
+      </h1>
+
+      <!-- 복귀 시간 및 카운트다운 영역 -->
+      <div class="space-y-3 pt-2">
+        <div id="displayReturnTime" class="text-xl sm:text-2xl md:text-3xl font-medium text-white/90">
+          14:30 복귀 예정
+        </div>
+        
+        <!-- 실시간 타이머 -->
+        <div id="countdownTimer" class="font-mono text-3xl sm:text-4xl md:text-5xl font-bold tracking-wider text-yellow-300 drop-shadow">
+          남은 시간 00:00:00
+        </div>
+      </div>
+
+      <!-- 기타 안내 문구 (유리 카드) -->
+      <div id="noteWrapper" class="mt-8">
+        <p id="displayNote" class="glass-card px-8 py-4 rounded-2xl text-base sm:text-lg md:text-xl text-white/95 max-w-2xl font-light leading-relaxed">
+          급한 업무는 전화 부탁드립니다.
+        </p>
+      </div>
+    </div>
+
+    <!-- 하단: 복귀 / 수정 버튼 -->
+    <div class="pb-4">
+      <button 
+        onclick="exitAwayMode()" 
+        class="glass-card hover:bg-white/30 text-white text-sm md:text-base px-6 py-3 rounded-full transition flex items-center gap-2 active:scale-95 shadow-md"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+        </svg>
+        <span>자리 복귀 / 내용 수정</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- JavaScript 로직 -->
+  <script>
+    let timerInterval = null;
+    let targetTimeObj = null;
+
+    // 페이지 로드 시 복귀 시간을 현재 시간 + 1시간으로 기본 설정
+    window.addEventListener('DOMContentLoaded', () => {
+      const now = new Date();
+      now.setHours(now.getHours() + 1);
+      
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      
+      document.getElementById('timeInput').value = `${hours}:${minutes}`;
+    });
+
+    // 화면 전환 및 타이머 시작
+    function startAwayMode(e) {
+      e.preventDefault();
+
+      const title = document.getElementById('titleInput').value.trim();
+      const timeStr = document.getElementById('timeInput').value;
+      const note = document.getElementById('noteInput').value.trim();
+
+      if (!title || !timeStr) return;
+
+      // 화면 데이터 채우기
+      document.getElementById('displayTitle').innerText = title;
+      document.getElementById('displayReturnTime').innerText = `${timeStr} 복귀 예정`;
+      
+      const noteElem = document.getElementById('displayNote');
+      const noteWrapper = document.getElementById('noteWrapper');
+      if (note) {
+        noteElem.innerText = note;
+        noteWrapper.style.display = 'block';
+      } else {
+        noteWrapper.style.display = 'none';
+      }
+
+      // 목표 시간 계산 (시간/분 파싱)
+      const [targetHours, targetMinutes] = timeStr.split(':').map(Number);
+      const now = new Date();
+      targetTimeObj = new Date();
+      targetTimeObj.setHours(targetHours, targetMinutes, 0, 0);
+
+      // 이미 지난 시간일 경우 내일 날짜로 설정
+      if (targetTimeObj <= now) {
+        targetTimeObj.setDate(targetTimeObj.getDate() + 1);
+      }
+
+      // 화면 전환
+      document.getElementById('formContainer').classList.add('hidden');
+      document.getElementById('displayContainer').classList.remove('hidden');
+
+      // 타이머 즉시 실행 및 1초 주기 인터벌 등록
+      updateCountdown();
+      timerInterval = setInterval(updateCountdown, 1000);
+    }
+
+    // 카운트다운 실시간 계산
+    function updateCountdown() {
+      const now = new Date();
+      const diff = targetTimeObj - now;
+
+      const countdownElem = document.getElementById('countdownTimer');
+
+      if (diff <= 0) {
+        countdownElem.innerText = "곧 복귀 예정입니다!";
+        countdownElem.classList.remove('text-yellow-300');
+        countdownElem.classList.add('text-green-300', 'animate-pulse');
+        return;
+      }
+
+      countdownElem.classList.add('text-yellow-300');
+      countdownElem.classList.remove('text-green-300', 'animate-pulse');
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      const h = String(hours).padStart(2, '0');
+      const m = String(minutes).padStart(2, '0');
+      const s = String(seconds).padStart(2, '0');
+
+      countdownElem.innerText = `남은 시간 ${h}:${m}:${s}`;
+    }
+
+    // 설정 화면으로 돌아가기
+    function exitAwayMode() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+      document.getElementById('displayContainer').classList.add('hidden');
+      document.getElementById('formContainer').classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>

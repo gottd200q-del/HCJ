@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>글자 수를 세어 주는 웹 앱 (Word Counter)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard Variable", Pretendard, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 잡패턴 전혀 없는 순수하고 차분한 모던 웜그레이 배경 */
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 32px 20px;
+      background-color: #f1f3f5;
+    }
+
+    /* 깔끔한 솔리드 화이트 카드 */
+    .container {
+      width: 100%;
+      max-width: 640px;
+      background: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      padding: 36px 32px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header h2 {
+      font-size: 20px;
+      color: #191f28;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+
+    /* 군더더기 없는 세그먼트 버튼 */
+    .lang-switcher {
+      display: flex;
+      background-color: #f2f4f6;
+      padding: 3px;
+      border-radius: 10px;
+    }
+
+    .lang-btn {
+      border: none;
+      background: transparent;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #8b95a1;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .lang-btn:hover {
+      color: #333d4b;
+    }
+
+    .lang-btn.active {
+      background-color: #ffffff;
+      color: #3182f6;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    textarea {
+      width: 100%;
+      height: 220px;
+      padding: 18px;
+      background: #f9fafb;
+      border: 1px solid #e5e8eb;
+      border-radius: 14px;
+      font-size: 15px;
+      line-height: 1.65;
+      color: #191f28;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+
+    textarea:focus {
+      border-color: #3182f6;
+      background-color: #ffffff;
+    }
+
+    textarea::placeholder {
+      color: #b0b8c1;
+    }
+
+    /* 깔끔한 평면 통계 카드 */
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .result-box {
+      background: #f9fafb;
+      border-radius: 14px;
+      padding: 18px 12px;
+      text-align: center;
+      transition: background-color 0.15s ease;
+    }
+
+    .result-box:hover {
+      background-color: #f2f4f6;
+    }
+
+    .result-box .number {
+      font-size: 26px;
+      font-weight: 700;
+      color: #3182f6;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+
+    .result-box .label {
+      font-size: 13px;
+      color: #6b7684;
+      font-weight: 500;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 24px 18px;
+      }
+      .result-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .result-box {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 18px;
+      }
+      .result-box .number {
+        margin-bottom: 0;
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h2 id="titleText">글자 수 세기</h2>
+      <div class="lang-switcher">
+        <button type="button" class="lang-btn active" onclick="setLanguage('ko')">한국어</button>
+        <button type="button" class="lang-btn" onclick="setLanguage('en')">English</button>
+        <button type="button" class="lang-btn" onclick="setLanguage('ja')">日本語</button>
+      </div>
+    </div>
+
+    <textarea id="inputText" placeholder="여기에 텍스트를 입력하거나 붙여넣으세요..."></textarea>
+
+    <div class="result-grid">
+      <div class="result-box">
+        <div class="number" id="charCount">0</div>
+        <div class="label" id="labelWithSpace">공백 포함</div>
+      </div>
+
+      <div class="result-box">
+        <div class="number" id="byteCount">0</div>
+        <div class="label" id="labelBytes">Bytes (한글 2byte)</div>
+      </div>
+
+      <div class="result-box">
+        <div class="number" id="noSpaceCharCount">0</div>
+        <div class="label" id="labelWithoutSpace">공백 제외</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentLang = 'ko';
+
+    const translations = {
+      ko: {
+        title: '글자 수 세기',
+        placeholder: '여기에 텍스트를 입력하거나 붙여넣으세요...',
+        withSpace: '공백 포함',
+        bytes: 'Bytes (한글 2byte)',
+        withoutSpace: '공백 제외'
+      },
+      en: {
+        title: 'Character Counter',
+        placeholder: 'Type or paste your text here...',
+        withSpace: 'Characters',
+        bytes: 'Bytes (Non-ASCII 2B)',
+        withoutSpace: 'Chars (No Space)'
+      },
+      ja: {
+        title: '文字数カウント',
+        placeholder: 'ここにテキストを入力または貼り付けてください...',
+        withSpace: '文字数 (空白含む)',
+        bytes: 'バイト数 (全角 2byte)',
+        withoutSpace: '文字数 (空白なし)'
+      }
+    };
+
+    const textarea = document.getElementById('inputText');
+    const charCountEl = document.getElementById('charCount');
+    const byteCountEl = document.getElementById('byteCount');
+    const noSpaceCharCountEl = document.getElementById('noSpaceCharCount');
+
+    const titleText = document.getElementById('titleText');
+    const labelWithSpace = document.getElementById('labelWithSpace');
+    const labelBytes = document.getElementById('labelBytes');
+    const labelWithoutSpace = document.getElementById('labelWithoutSpace');
+    const langBtns = document.querySelectorAll('.lang-btn');
+
+    function calculateBytes(text) {
+      let bytes = 0;
+      for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i);
+        if (
+          (code >= 0xac00 && code <= 0xd7a3) || 
+          (code >= 0x1100 && code <= 0x11ff) || 
+          (code >= 0x3131 && code <= 0x318e) || 
+          (code >= 0x3040 && code <= 0x309f) || 
+          (code >= 0x30a0 && code <= 0x30ff) || 
+          (code >= 0x4e00 && code <= 0x9faf)    
+        ) {
+          bytes += 2;
+        } else if (code > 0x7f) {
+          bytes += 2;
+        } else {
+          bytes += 1;
+        }
+      }
+      return bytes;
+    }
+
+    function updateCounts() {
+      const text = textarea.value;
+      charCountEl.textContent = text.length.toLocaleString();
+      byteCountEl.textContent = calculateBytes(text).toLocaleString();
+      noSpaceCharCountEl.textContent = text.replace(/\s/g, '').length.toLocaleString();
+    }
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      const t = translations[lang];
+
+      titleText.textContent = t.title;
+      textarea.placeholder = t.placeholder;
+      labelWithSpace.textContent = t.withSpace;
+      labelBytes.textContent = t.bytes;
+      labelWithoutSpace.textContent = t.withoutSpace;
+
+      langBtns.forEach(btn => {
+        if (
+          (lang === 'ko' && btn.textContent === '한국어') ||
+          (lang === 'en' && btn.textContent === 'English') ||
+          (lang === 'ja' && btn.textContent === '日本語')
+        ) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    textarea.addEventListener('input', updateCounts);
+  </script>
+</body>
+</html>

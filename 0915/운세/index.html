@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>오늘의 운세 - 나나도사</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* 부드러운 파스텔톤 그라데이션 & 배경 블러 오브 */
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 24px 16px;
+      background: linear-gradient(135deg, #fce7f3 0%, #e0e7ff 50%, #dbeafe 100%);
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    body::before {
+      width: 320px;
+      height: 320px;
+      background: rgba(254, 205, 211, 0.7); /* 파스텔 로즈 */
+      top: -60px;
+      left: -60px;
+    }
+
+    body::after {
+      width: 360px;
+      height: 360px;
+      background: rgba(199, 210, 254, 0.7); /* 파스텔 라벤더 */
+      bottom: -60px;
+      right: -60px;
+    }
+
+    /* 반투명 글래스모피즘 카드 */
+    .card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 440px;
+      padding: 36px 28px;
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 28px;
+      box-shadow: 0 16px 36px rgba(148, 163, 184, 0.18);
+      text-align: center;
+    }
+
+    h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 6px;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 24px;
+      line-height: 1.4;
+    }
+
+    .input-group {
+      text-align: left;
+      margin-bottom: 16px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 6px;
+      margin-left: 2px;
+    }
+
+    input[type="text"],
+    input[type="date"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid rgba(203, 213, 225, 0.8);
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 14px;
+      font-size: 14px;
+      color: #1e293b;
+      outline: none;
+      transition: all 0.25s ease;
+    }
+
+    input[type="text"]:focus,
+    input[type="date"]:focus {
+      border-color: #a5b4fc;
+      background: #ffffff;
+      box-shadow: 0 0 0 4px rgba(199, 210, 254, 0.4);
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* 성별 버튼 */
+    .gender-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .gender-btn {
+      flex: 1;
+      padding: 11px 0;
+      border: 1px solid rgba(203, 213, 225, 0.8);
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .gender-btn:hover {
+      background: #ffffff;
+    }
+
+    .gender-btn.active {
+      background: #e0e7ff;
+      border-color: #a5b4fc;
+      color: #4338ca;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(165, 180, 252, 0.35);
+    }
+
+    .element-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #334155;
+      margin-top: 22px;
+      margin-bottom: 4px;
+    }
+
+    /* 5원소 카드 그리드 */
+    .elements-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+      margin-bottom: 24px;
+    }
+
+    .element-card {
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      border-radius: 14px;
+      padding: 12px 4px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.7);
+      transition: all 0.25s ease;
+    }
+
+    .element-card:hover {
+      transform: translateY(-2px);
+      background: #ffffff;
+    }
+
+    .element-card.active {
+      background: #fdf2f8;
+      border-color: #f472b6;
+      box-shadow: 0 4px 12px rgba(244, 114, 182, 0.25);
+      transform: translateY(-2px);
+    }
+
+    .element-card .icon {
+      font-size: 22px;
+    }
+
+    .element-card .label {
+      font-size: 12px;
+      color: #475569;
+      font-weight: 600;
+    }
+
+    /* 제출 버튼 */
+    .submit-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+      color: #ffffff;
+      border: none;
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(99, 102, 241, 0.28);
+      transition: all 0.25s ease;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(99, 102, 241, 0.35);
+    }
+
+    /* 결과 박스 */
+    #result-modal {
+      display: none;
+      margin-top: 22px;
+      padding: 18px 20px;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      border-radius: 16px;
+      text-align: left;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    #result-modal h3 {
+      font-size: 15px;
+      color: #4338ca;
+      margin-bottom: 8px;
+    }
+
+    #result-text {
+      font-size: 13.5px;
+      color: #334155;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>오늘의 운세</h2>
+    <p class="subtitle">당신의 기운을 담아 오늘의 운세를 확인해보세요</p>
+
+    <div class="input-group">
+      <label>이름</label>
+      <input type="text" id="username" placeholder="이름을 입력하세요" />
+    </div>
+
+    <div class="row">
+      <div class="input-group" style="flex: 2;">
+        <label>생일</label>
+        <input type="date" id="birthdate" />
+      </div>
+      <div class="input-group" style="flex: 1;">
+        <label>나이</label>
+        <input type="text" id="age" placeholder="세" readonly />
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>성별</label>
+      <div class="gender-group">
+        <button type="button" class="gender-btn" onclick="selectGender(this, '남성')">남성</button>
+        <button type="button" class="gender-btn" onclick="selectGender(this, '여성')">여성</button>
+        <button type="button" class="gender-btn" onclick="selectGender(this, '기타')">기타</button>
+      </div>
+    </div>
+
+    <div class="element-title">당신의 원소를 선택하세요</div>
+    <div class="subtitle" style="margin-bottom: 0;">마음이 끌리는 하나의 원소를 선택해주세요</div>
+
+    <div class="elements-grid">
+      <div class="element-card" onclick="selectElement(this, '불')">
+        <span class="icon">🔥</span>
+        <span class="label">불</span>
+      </div>
+      <div class="element-card" onclick="selectElement(this, '물')">
+        <span class="icon">💧</span>
+        <span class="label">물</span>
+      </div>
+      <div class="element-card" onclick="selectElement(this, '나무')">
+        <span class="icon">🌲</span>
+        <span class="label">나무</span>
+      </div>
+      <div class="element-card" onclick="selectElement(this, '땅')">
+        <span class="icon">⛰️</span>
+        <span class="label">땅</span>
+      </div>
+      <div class="element-card" onclick="selectElement(this, '바람')">
+        <span class="icon">🍃</span>
+        <span class="label">바람</span>
+      </div>
+    </div>
+
+    <button type="button" class="submit-btn" onclick="showFortune()">오늘의 운세 확인하기</button>
+
+    <div id="result-modal">
+      <h3 id="result-user-info"></h3>
+      <p id="result-text"></p>
+    </div>
+  </div>
+
+  <script>
+    let selectedGender = '';
+    let selectedElement = '';
+
+    // 생년월일 선택 시 만 나이 자동 계산
+    document.getElementById('birthdate').addEventListener('change', function () {
+      const birth = new Date(this.value);
+      if (isNaN(birth.getTime())) return;
+
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      document.getElementById('age').value = age >= 0 ? `${age}세` : '';
+    });
+
+    function selectGender(btn, gender) {
+      document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedGender = gender;
+    }
+
+    function selectElement(card, element) {
+      document.querySelectorAll('.element-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      selectedElement = element;
+    }
+
+    const fortuneBank = {
+      '불': [
+        '내면의 열정이 좋은 기회를 이끕니다. 주저하지 말고 원하는 일에 과감히 도전해보세요.',
+        '감정이 앞서기 쉬운 하루입니다. 깊은 호흡으로 평온을 유지하면 좋은 결과가 따릅니다.'
+      ],
+      '물': [
+        '유연하고 지혜로운 대처가 빛을 발하는 날입니다. 사람들과의 대화 속에서 해답을 찾을 수 있습니다.',
+        '마음이 잔잔한 호수처럼 평온해집니다. 밀린 생각이나 계획을 차분히 정리하기 좋습니다.'
+      ],
+      '나무': [
+        '새로운 싹이 움트듯 긍정적인 성장이 일어나는 날입니다. 배우고 익히는 데 최고의 날입니다.',
+        '믿음직한 조력자나 친구를 만나게 될 운입니다. 따뜻한 대화를 먼저 건네보세요.'
+      ],
+      '땅': [
+        '차분한 안정감이 감도는 날입니다. 서두르지 않고 묵묵히 자리를 지키는 것이 이득을 가져옵니다.',
+        '기초를 탄탄히 다지기에 최적인 하루입니다. 규칙적인 일상 루틴을 지켜보세요.'
+      ],
+      '바람': [
+        '생각지 못한 반가운 소식이나 새로운 영감이 찾아옵니다. 가벼운 산책을 추천합니다.',
+        '주변의 이런저런 말에 흔들리지 마세요. 내 중심을 단단히 잡는 것이 핵심입니다.'
+      ]
+    };
+
+    function showFortune() {
+      const name = document.getElementById('username').value.trim();
+      const birth = document.getElementById('birthdate').value;
+
+      if (!name) {
+        alert('이름을 입력해주세요.');
+        return;
+      }
+      if (!birth) {
+        alert('생년월일을 선택해주세요.');
+        return;
+      }
+      if (!selectedGender) {
+        alert('성별을 선택해주세요.');
+        return;
+      }
+      if (!selectedElement) {
+        alert('원소를 선택해주세요.');-
+        return;
+      }
+
+      const fortunes = fortuneBank[selectedElement];
+      const randomFortune = fortunes[Math.floor(Math.random() * fortunes.length)];
+
+      const resultBox = document.getElementById('result-modal');
+      const infoTitle = document.getElementById('result-user-info');
+      const infoContent = document.getElementById('result-text');
+
+      infoTitle.textContent = `🔮 ${name}님의 오늘의 운세 (${selectedElement}의 기운)`;
+      infoContent.textContent = randomFortune;
+      resultBox.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

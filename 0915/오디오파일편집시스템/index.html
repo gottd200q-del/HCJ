@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>오디오 에디터</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+<style>
+  :root{
+    --bg: #12151a;
+    --bg-2: #181c22;
+    --panel: #1d2229;
+    --border: #2b313a;
+    --accent: #ff8a3d;
+    --accent-soft: rgba(255,138,61,0.16);
+    --teal: #34d1b0;
+    --teal-soft: rgba(52,209,176,0.14);
+    --text: #eef1f4;
+    --muted: #838b97;
+    --danger: #ff5f56;
+    --radius: 14px;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    min-height:100vh;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  button, select, input{ font-family:inherit; }
+
+  .app{
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 40px 20px 70px;
+  }
+  header h1{
+    margin: 0 0 6px;
+    font-size: 26px;
+    font-weight:600;
+    letter-spacing: 0.2px;
+  }
+  header p{
+    margin:0 0 32px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height:1.6;
+  }
+
+  #uploadZone{
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 56px 24px;
+    text-align:center;
+    cursor:pointer;
+    transition: border-color .15s ease, background .15s ease;
+    background: var(--bg-2);
+  }
+  #uploadZone.drag{
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  #uploadZone .icon{ font-size: 34px; margin-bottom: 10px; }
+  #uploadZone .primary{ font-size:16px; font-weight:600; margin-bottom:6px; }
+  #uploadZone .secondary{ font-size:13px; color: var(--muted); }
+  #fileInput{ display:none; }
+
+  #editor{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .fileInfo{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .fileInfo .name{
+    font-weight:600;
+    font-size: 16px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    max-width: 320px;
+  }
+  .fileInfo .badges{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .badge{
+    font-size:12px;
+    color: var(--muted);
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px 10px;
+  }
+
+  .waveformWrap{
+    position:relative;
+    margin-bottom: 10px;
+  }
+  #waveform{
+    width:100%;
+    display:block;
+    aspect-ratio: 900 / 170;
+    border-radius: 10px;
+    background: var(--bg-2);
+    touch-action: none;
+    cursor: text;
+  }
+  .timeReadout{
+    display:flex;
+    justify-content:space-between;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .selectionInfo{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    flex-wrap:wrap;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 22px;
+  }
+  .selectionInfo .mono{ color: var(--text); }
+  .selectionInfo button{
+    margin-left:auto;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .selectionInfo button:hover{ border-color: var(--teal); color: var(--teal); }
+
+  .controlsRow{
+    display:flex;
+    align-items:center;
+    gap: 22px;
+    flex-wrap:wrap;
+    padding: 16px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 22px;
+  }
+  #playBtn{
+    background: var(--teal);
+    color: #0a2420;
+    border:none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+    flex: 0 0 auto;
+  }
+  #playBtn:hover{ filter:brightness(1.08); }
+
+  .volumeControl{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    flex:1;
+    min-width: 220px;
+  }
+  .volumeControl label{ font-size:13px; color: var(--muted); flex:0 0 auto; }
+  .volumeControl input[type="range"]{
+    flex:1;
+    accent-color: var(--accent);
+  }
+  #volumeLabel{
+    font-size: 13px;
+    min-width: 108px;
+    text-align:right;
+    color: var(--text);
+  }
+
+  .exportRow{
+    display:flex;
+    align-items:center;
+    gap: 12px;
+    flex-wrap:wrap;
+  }
+  .formatControl{
+    display:flex;
+    gap: 8px;
+    flex:1;
+    min-width: 220px;
+  }
+  select{
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  #downloadBtn{
+    background: linear-gradient(180deg, var(--accent), #e5711f);
+    color: #241203;
+    border:none;
+    border-radius: 10px;
+    padding: 12px 22px;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  #downloadBtn:hover{ filter:brightness(1.06); }
+  #downloadBtn:disabled{ filter:grayscale(0.5) brightness(0.7); cursor:not-allowed; }
+
+  #statusMsg{
+    margin-top: 14px;
+    font-size: 13px;
+    min-height: 18px;
+  }
+  #statusMsg.error{ color: var(--danger); }
+  #statusMsg.ok{ color: var(--teal); }
+
+  #resetBtn{
+    display:block;
+    margin: 18px auto 0;
+    background:none;
+    border:none;
+    color: var(--muted);
+    font-size: 13px;
+    text-decoration: underline;
+    cursor:pointer;
+  }
+  #resetBtn:hover{ color: var(--text); }
+
+  button:focus-visible, select:focus-visible, input:focus-visible{
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 520px){
+    .fileInfo .name{ max-width: 180px; }
+    .controlsRow{ flex-direction:column; align-items:stretch; }
+    .volumeControl{ min-width: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>오디오 에디터</h1>
+    <p>MP3, WAV 등 오디오 파일을 올려서 구간을 자르고 볼륨을 조절한 뒤, 원하는 형식으로 내려받으세요.</p>
+  </header>
+
+  <div id="uploadZone">
+    <div class="icon">🎧</div>
+    <div class="primary">클릭하거나 파일을 끌어다 놓으세요</div>
+    <div class="secondary">MP3 · WAV · OGG · M4A 등 지원</div>
+    <input type="file" id="fileInput" accept="audio/*" />
+  </div>
+
+  <section id="editor" hidden>
+    <div class="fileInfo">
+      <div class="name mono" id="fileName">-</div>
+      <div class="badges">
+        <span class="badge mono" id="badgeDuration">-</span>
+        <span class="badge mono" id="badgeRate">-</span>
+        <span class="badge mono" id="badgeChannels">-</span>
+      </div>
+    </div>
+
+    <div class="waveformWrap">
+      <canvas id="waveform"></canvas>
+      <div class="timeReadout">
+        <span class="mono" id="curTimeLabel">00:00.00</span>
+        <span class="mono" id="totalTimeLabel">00:00.00</span>
+      </div>
+    </div>
+
+    <div class="selectionInfo">
+      <span>선택 구간</span>
+      <span class="mono" id="selRangeLabel">00:00.00 – 00:00.00</span>
+      <span class="mono" id="selDurLabel">(0.00초)</span>
+      <button id="selectAllBtn">전체 선택</button>
+    </div>
+
+    <div class="controlsRow">
+      <button id="playBtn">▶ 재생</button>
+      <div class="volumeControl">
+        <label for="volumeSlider">볼륨</label>
+        <input type="range" id="volumeSlider" min="0" max="200" value="100" />
+        <span class="mono" id="volumeLabel">100% · 0.0dB</span>
+      </div>
+    </div>
+
+    <div class="exportRow">
+      <div class="formatControl">
+        <select id="formatSelect">
+          <option value="wav">WAV (무손실)</option>
+          <option value="mp3">MP3</option>
+        </select>
+        <select id="bitrateSelect" hidden>
+          <option value="128">128 kbps</option>
+          <option value="192" selected>192 kbps</option>
+          <option value="256">256 kbps</option>
+          <option value="320">320 kbps</option>
+        </select>
+      </div>
+      <button id="downloadBtn">다운로드</button>
+    </div>
+
+    <div id="statusMsg"></div>
+    <button id="resetBtn">다른 파일 불러오기</button>
+  </section>
+</div>
+
+<script>
+(function(){
+  const W = 900, H = 170;
+
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+  const editor = document.getElementById('editor');
+  const fileNameEl = document.getElementById('fileName');
+  const badgeDuration = document.getElementById('badgeDuration');
+  const badgeRate = document.getElementById('badgeRate');
+  const badgeChannels = document.getElementById('badgeChannels');
+  const waveCanvas = document.getElementById('waveform');
+  const ctx2d = waveCanvas.getContext('2d');
+  const curTimeLabel = document.getElementById('curTimeLabel');
+  const totalTimeLabel = document.getElementById('totalTimeLabel');
+  const selRangeLabel = document.getElementById('selRangeLabel');
+  const selDurLabel = document.getElementById('selDurLabel');
+  const selectAllBtn = document.getElementById('selectAllBtn');
+  const playBtn = document.getElementById('playBtn');
+  const volumeSlider = document.getElementById('volumeSlider');
+  const volumeLabel = document.getElementById('volumeLabel');
+  const formatSelect = document.getElementById('formatSelect');
+  const bitrateSelect = document.getElementById('bitrateSelect');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const statusMsg = document.getElementById('statusMsg');
+  const resetBtn = document.getElementById('resetBtn');
+
+  let audioCtx = null;
+  let gainNode = null;
+  let decodedBuffer = null;
+  let peaks = null;
+  let baseFileName = 'audio';
+  let volumePercent = 100;
+
+  const state = {
+    selStart: 0,
+    selEnd: 0,
+    playOffset: 0,
+    currentTime: 0,
+    isPlaying: false,
+    ctxStartTime: 0,
+    sourceNode: null,
+    dragMode: null // 'start' | 'end' | 'new'
+  };
+
+  function fitCanvas(){
+    const ratio = window.devicePixelRatio || 1;
+    waveCanvas.width = W * ratio;
+    waveCanvas.height = H * ratio;
+    ctx2d.setTransform(ratio, 0, 0, ratio, 0, 0);
+  }
+  fitCanvas();
+  window.addEventListener('resize', fitCanvas);
+
+  function ensureAudioContext(){
+    if(!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      gainNode = audioCtx.createGain();
+    }
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function fmtTime(t){
+    if(!isFinite(t) || t < 0) t = 0;
+    const m = Math.floor(t / 60);
+    const s = t - m * 60;
+    return String(m).padStart(2,'0') + ':' + s.toFixed(2).padStart(5,'0');
+  }
+
+  function setStatus(msg, type){
+    statusMsg.textContent = msg || '';
+    statusMsg.className = type || '';
+  }
+
+  // ---------- File loading ----------
+
+  function handleFile(file){
+    if(!file) return;
+    setStatus('', '');
+    ensureAudioContext();
+    stopPlayback();
+
+    file.arrayBuffer().then(arrayBuffer=>{
+      return audioCtx.decodeAudioData(arrayBuffer.slice(0));
+    }).then(decoded=>{
+      decodedBuffer = decoded;
+      baseFileName = file.name.replace(/\.[^.]+$/, '') || 'audio';
+      state.selStart = 0;
+      state.selEnd = decoded.duration;
+      state.playOffset = 0;
+      state.currentTime = 0;
+      volumePercent = 100;
+      volumeSlider.value = 100;
+      updateVolumeLabel();
+
+      fileNameEl.textContent = file.name;
+      badgeDuration.textContent = fmtTime(decoded.duration);
+      badgeRate.textContent = decoded.sampleRate + ' Hz';
+      badgeChannels.textContent = decoded.numberOfChannels === 1 ? '모노' : (decoded.numberOfChannels === 2 ? '스테레오' : decoded.numberOfChannels + '채널');
+
+      peaks = computePeaks(decoded, W);
+      totalTimeLabel.textContent = fmtTime(decoded.duration);
+      updateSelectionLabels();
+      drawWaveform();
+
+      uploadZone.hidden = true;
+      editor.hidden = false;
+    }).catch(()=>{
+      setStatus('오디오 파일을 불러올 수 없습니다. MP3, WAV, OGG 등 지원되는 형식인지 확인해주세요.', 'error');
+    });
+  }
+
+  fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag');
+    if(e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+
+  resetBtn.addEventListener('click', () => {
+    stopPlayback();
+    decodedBuffer = null;
+    peaks = null;
+    fileInput.value = '';
+    editor.hidden = true;
+    uploadZone.hidden = false;
+    setStatus('', '');
+  });
+
+  // ---------- Waveform ----------
+
+  function computePeaks(buffer, width){
+    const channels = [];
+    for(let c=0; c<buffer.numberOfChannels; c++) channels.push(buffer.getChannelData(c));
+    const len = buffer.length;
+    const perPixel = Math.max(1, Math.floor(len / width));
+    const result = new Array(width);
+    for(let i=0; i<width; i++){
+      const start = i * perPixel;
+      const end = Math.min(len, start + perPixel);
+      let min = 0, max = 0;
+      for(let s = start; s < end; s++){
+        let v = 0;
+        for(let c=0; c<channels.length; c++) v += channels[c][s];
+        v /= channels.length;
+        if(v < min) min = v;
+        if(v > max) max = v;
+      }
+      result[i] = [min, max];
+    }
+    return result;
+  }
+
+  function timeToX(t){
+    if(!decodedBuffer || decodedBuffer.duration === 0) return 0;
+    return (t / decodedBuffer.duration) * W;
+  }
+  function xToTime(x){
+    if(!decodedBuffer) return 0;
+    const t = (x / W) * decodedBuffer.duration;
+    return Math.max(0, Math.min(decodedBuffer.duration, t));
+  }
+
+  function drawWaveform(){
+    ctx2d.clearRect(0,0,W,H);
+    ctx2d.fillStyle = '#181c22';
+    ctx2d.fillRect(0,0,W,H);
+    if(!peaks) return;
+
+    const mid = H/2;
+    const selStartX = timeToX(state.selStart);
+    const selEndX = timeToX(state.selEnd);
+    const playX = state.isPlaying ? timeToX(state.currentTime) : -1;
+
+    for(let i=0; i<peaks.length; i++){
+      const [min,max] = peaks[i];
+      const inSel = i >= selStartX && i <= selEndX;
+      const played = inSel && playX >= 0 && i <= playX;
+      ctx2d.strokeStyle = played ? '#ffb877' : (inSel ? '#34d1b0' : 'rgba(131,139,151,0.32)');
+      ctx2d.beginPath();
+      ctx2d.moveTo(i + 0.5, mid + min * mid * 0.92);
+      ctx2d.lineTo(i + 0.5, mid + max * mid * 0.92 || mid);
+      ctx2d.stroke();
+    }
+
+    ctx2d.strokeStyle = '#ff8a3d';
+    ctx2d.lineWidth = 2;
+    [selStartX, selEndX].forEach(x=>{
+      ctx2d.beginPath();
+      ctx2d.moveTo(x, 0);
+      ctx2d.lineTo(x, H);
+      ctx2d.stroke();
+    });
+    ctx2d.lineWidth = 1;
+
+    if(playX >= 0){
+      ctx2d.strokeStyle = '#ffffff';
+      ctx2d.beginPath();
+      ctx2d.moveTo(playX, 0);
+      ctx2d.lineTo(playX, H);
+      ctx2d.stroke();
+    }
+
+    curTimeLabel.textContent = fmtTime(state.isPlaying ? state.currentTime : state.selStart + (state.playOffset||0));
+  }
+
+  function updateSelectionLabels(){
+    selRangeLabel.textContent = fmtTime(state.selStart) + ' – ' + fmtTime(state.selEnd);
+    selDurLabel.textContent = '(' + (state.selEnd - state.selStart).toFixed(2) + '초)';
+  }
+
+  // ---------- Selection dragging ----------
+
+  function canvasX(clientX){
+    const rect = waveCanvas.getBoundingClientRect();
+    const scaleX = W / rect.width;
+    return Math.max(0, Math.min(W, (clientX - rect.left) * scaleX));
+  }
+
+  waveCanvas.addEventListener('pointerdown', e=>{
+    if(!decodedBuffer) return;
+    waveCanvas.setPointerCapture(e.pointerId);
+    const x = canvasX(e.clientX);
+    const startX = timeToX(state.selStart);
+    const endX = timeToX(state.selEnd);
+    const tolerance = 10;
+    if(Math.abs(x - startX) <= tolerance){
+      state.dragMode = 'start';
+    } else if(Math.abs(x - endX) <= tolerance){
+      state.dragMode = 'end';
+    } else {
+      state.dragMode = 'new';
+      state.selStart = xToTime(x);
+      state.selEnd = state.selStart;
+      state.dragAnchor = state.selStart;
+    }
+    stopPlayback();
+  });
+
+  waveCanvas.addEventListener('pointermove', e=>{
+    if(!decodedBuffer || !state.dragMode) return;
+    const x = canvasX(e.clientX);
+    const t = xToTime(x);
+    if(state.dragMode === 'start'){
+      state.selStart = Math.min(t, state.selEnd - 0.02);
+    } else if(state.dragMode === 'end'){
+      state.selEnd = Math.max(t, state.selStart + 0.02);
+    } else if(state.dragMode === 'new'){
+      if(t < state.dragAnchor){ state.selStart = t; state.selEnd = state.dragAnchor; }
+      else { state.selStart = state.dragAnchor; state.selEnd = t; }
+    }
+    state.playOffset = 0;
+    updateSelectionLabels();
+    drawWaveform();
+  });
+
+  window.addEventListener('pointerup', ()=>{
+    if(state.dragMode){
+      if(state.selEnd - state.selStart < 0.02){
+        state.selEnd = Math.min(decodedBuffer ? decodedBuffer.duration : 0, state.selStart + 0.05);
+      }
+      updateSelectionLabels();
+      drawWaveform();
+    }
+    state.dragMode = null;
+  });
+
+  selectAllBtn.addEventListener('click', ()=>{
+    if(!decodedBuffer) return;
+    stopPlayback();
+    state.selStart = 0;
+    state.selEnd = decodedBuffer.duration;
+    state.playOffset = 0;
+    updateSelectionLabels();
+    drawWaveform();
+  });
+
+  // ---------- Playback ----------
+
+  function updateVolumeLabel(){
+    const db = volumePercent === 0 ? '-∞' : (20 * Math.log10(volumePercent/100)).toFixed(1);
+    volumeLabel.textContent = volumePercent + '% · ' + db + 'dB';
+    if(gainNode) gainNode.gain.value = volumePercent/100;
+  }
+
+  volumeSlider.addEventListener('input', ()=>{
+    volumePercent = parseInt(volumeSlider.value, 10);
+    updateVolumeLabel();
+  });
+
+  function startPlayback(){
+    if(!decodedBuffer) return;
+    ensureAudioContext();
+    const remaining = (state.selEnd - state.selStart) - (state.playOffset || 0);
+    if(remaining <= 0.01) state.playOffset = 0;
+
+    const src = audioCtx.createBufferSource();
+    src.buffer = decodedBuffer;
+    src.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    gainNode.gain.value = volumePercent/100;
+
+    const startAt = state.selStart + (state.playOffset || 0);
+    const dur = Math.max(0.01, state.selEnd - startAt);
+    src.start(0, startAt, dur);
+
+    state.sourceNode = src;
+    state.isPlaying = true;
+    state.ctxStartTime = audioCtx.currentTime;
+    playBtn.textContent = '⏸ 일시정지';
+
+    src.onended = ()=>{
+      if(state.isPlaying){
+        state.isPlaying = false;
+        state.playOffset = 0;
+        state.currentTime = state.selStart;
+        playBtn.textContent = '▶ 재생';
+        drawWaveform();
+      }
+    };
+
+    requestAnimationFrame(playheadLoop);
+  }
+
+  function pausePlayback(){
+    if(state.sourceNode){
+      const elapsed = audioCtx.currentTime - state.ctxStartTime;
+      state.playOffset = (state.playOffset || 0) + elapsed;
+      state.sourceNode.onended = null;
+      try{ state.sourceNode.stop(); } catch(e){}
+      state.sourceNode = null;
+    }
+    state.isPlaying = false;
+    playBtn.textContent = '▶ 재생';
+    drawWaveform();
+  }
+
+  function stopPlayback(){
+    if(state.sourceNode){
+      state.sourceNode.onended = null;
+      try{ state.sourceNode.stop(); } catch(e){}
+      state.sourceNode = null;
+    }
+    state.isPlaying = false;
+    state.playOffset = 0;
+    playBtn.textContent = '▶ 재생';
+  }
+
+  function playheadLoop(){
+    if(!state.isPlaying) return;
+    const elapsed = audioCtx.currentTime - state.ctxStartTime;
+    state.currentTime = state.selStart + (state.playOffset || 0) + elapsed;
+    if(state.currentTime >= state.selEnd){
+      state.currentTime = state.selEnd;
+      drawWaveform();
+      return;
+    }
+    drawWaveform();
+    requestAnimationFrame(playheadLoop);
+  }
+
+  playBtn.addEventListener('click', ()=>{
+    if(!decodedBuffer) return;
+    if(state.isPlaying) pausePlayback();
+    else startPlayback();
+  });
+
+  // ---------- Export ----------
+
+  formatSelect.addEventListener('change', ()=>{
+    bitrateSelect.hidden = formatSelect.value !== 'mp3';
+  });
+
+  function extractBuffer(buffer, start, end, gain){
+    const sr = buffer.sampleRate;
+    const startSample = Math.floor(start * sr);
+    const endSample = Math.min(buffer.length, Math.ceil(end * sr));
+    const length = Math.max(1, endSample - startSample);
+    const out = audioCtx.createBuffer(buffer.numberOfChannels, length, sr);
+    for(let c=0; c<buffer.numberOfChannels; c++){
+      const srcData = buffer.getChannelData(c);
+      const dstData = out.getChannelData(c);
+      for(let i=0; i<length; i++){
+        let v = (srcData[startSample+i] || 0) * gain;
+        if(v > 1) v = 1; else if(v < -1) v = -1;
+        dstData[i] = v;
+      }
+    }
+    return out;
+  }
+
+  function writeString(view, offset, str){
+    for(let i=0; i<str.length; i++) view.setUint8(offset+i, str.charCodeAt(i));
+  }
+
+  function audioBufferToWavBlob(buffer){
+    const numCh = buffer.numberOfChannels;
+    const sr = buffer.sampleRate;
+    const numFrames = buffer.length;
+    const blockAlign = numCh * 2;
+    const dataSize = numFrames * blockAlign;
+    const arrBuf = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(arrBuf);
+
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeString(view, 8, 'WAVE');
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numCh, true);
+    view.setUint32(24, sr, true);
+    view.setUint32(28, sr * blockAlign, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, 16, true);
+    writeString(view, 36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    const channelData = [];
+    for(let c=0; c<numCh; c++) channelData.push(buffer.getChannelData(c));
+    let offset = 44;
+    for(let i=0; i<numFrames; i++){
+      for(let c=0; c<numCh; c++){
+        let sample = channelData[c][i];
+        sample = Math.max(-1, Math.min(1, sample));
+        const val = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+        view.setInt16(offset, val, true);
+        offset += 2;
+      }
+    }
+    return new Blob([view], { type: 'audio/wav' });
+  }
+
+  function floatTo16(input){
+    const out = new Int16Array(input.length);
+    for(let i=0; i<input.length; i++){
+      let s = Math.max(-1, Math.min(1, input[i]));
+      out[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    return out;
+  }
+
+  function audioBufferToMp3Blob(buffer, kbps){
+    const channels = buffer.numberOfChannels;
+    const sr = buffer.sampleRate;
+    const encoder = new lamejs.Mp3Encoder(channels, sr, kbps);
+    const blockSize = 1152;
+    const left = floatTo16(buffer.getChannelData(0));
+    const right = channels > 1 ? floatTo16(buffer.getChannelData(1)) : null;
+    const data = [];
+    for(let i=0; i<left.length; i+=blockSize){
+      const lchunk = left.subarray(i, i+blockSize);
+      let buf;
+      if(channels > 1){
+        const rchunk = right.subarray(i, i+blockSize);
+        buf = encoder.encodeBuffer(lchunk, rchunk);
+      } else {
+        buf = encoder.encodeBuffer(lchunk);
+      }
+      if(buf.length > 0) data.push(new Int8Array(buf));
+    }
+    const end = encoder.flush();
+    if(end.length > 0) data.push(new Int8Array(end));
+    return new Blob(data, { type: 'audio/mpeg' });
+  }
+
+  downloadBtn.addEventListener('click', ()=>{
+    if(!decodedBuffer) return;
+    ensureAudioContext();
+    downloadBtn.disabled = true;
+    setStatus('내보내는 중…', '');
+
+    setTimeout(()=>{
+      try{
+        const gain = volumePercent / 100;
+        const trimmed = extractBuffer(decodedBuffer, state.selStart, state.selEnd, gain);
+        const format = formatSelect.value;
+        let blob, ext;
+        if(format === 'wav'){
+          blob = audioBufferToWavBlob(trimmed);
+          ext = 'wav';
+        } else {
+          blob = audioBufferToMp3Blob(trimmed, parseInt(bitrateSelect.value, 10));
+          ext = 'mp3';
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = baseFileName + '_edited.' + ext;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url), 4000);
+        setStatus('다운로드가 시작되었습니다.', 'ok');
+      } catch(err){
+        setStatus('내보내기에 실패했습니다: ' + (err && err.message ? err.message : '알 수 없는 오류'), 'error');
+      } finally {
+        downloadBtn.disabled = false;
+      }
+    }, 30);
+  });
+
+})();
+</script>
+</body>
+</html>
